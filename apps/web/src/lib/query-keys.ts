@@ -7,4 +7,8 @@ export const queryKeys = {
     all: ['auth'] as const,
     me: () => [...queryKeys.auth.all, 'me'] as const,
   },
+  suppliers: {
+    all: ['suppliers'] as const,
+    list: () => [...queryKeys.suppliers.all, 'list'] as const,
+  },
 };

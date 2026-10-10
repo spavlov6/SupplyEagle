@@ -9,3 +9,8 @@ export type {
   HealthServiceName,
   HealthStatus,
 } from './health.js';
+export type {
+  CreateSupplierRequest,
+  Supplier,
+  SupplierListResponse,
+} from './supplier.js';
