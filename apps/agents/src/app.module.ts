@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AnalysisModule } from './analysis/analysis.module.js';
 import { HealthModule } from './health/health.module.js';
+import { PipelineModule } from './pipeline/pipeline.module.js';
 import { RouteDiscoveryModule } from './route-discovery/route-discovery.module.js';
 
 @Module({
@@ -13,6 +14,7 @@ import { RouteDiscoveryModule } from './route-discovery/route-discovery.module.j
     HealthModule,
     AnalysisModule,
     RouteDiscoveryModule,
+    PipelineModule,
   ],
 })
 export class AppModule {}

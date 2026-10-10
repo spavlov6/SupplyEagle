@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { SourceFacts, SourceName } from '@supplyeagle/types';
 import { In, Repository } from 'typeorm';
+import { hashFacts } from '../hash-facts.js';
 import { assessConfidence } from './confidence.js';
 import { canonicalCountry } from './countries.js';
 import { ClaudeService } from './claude.service.js';
@@ -62,39 +63,48 @@ export class AnalysisRunner {
         });
       }
 
-      try {
-        const summary = await this.claude.summarize({
-          supplierName: supplier.name,
-          assessment,
-          sources: collected,
-        });
-        await this.analyses.update(analysis.id, {
-          status: 'completed',
-          confidence: assessment.confidence,
-          summary,
-          legalName: assessment.legalName,
-          country: assessment.country,
-          sanctionsHit: assessment.sanctionsHit,
-          error: null,
-          updatedAt: new Date(),
-        });
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Claude request failed';
-        this.logger.error(
-          `Claude summary failed for ${supplierId}: ${message}`,
-        );
-        await this.analyses.update(analysis.id, {
-          status: 'failed',
-          confidence: assessment.confidence,
-          summary: null,
-          legalName: assessment.legalName,
-          country: assessment.country,
-          sanctionsHit: assessment.sanctionsHit,
-          error: message,
-          updatedAt: new Date(),
-        });
+      const factsHash = hashFacts(
+        collected.map((item) => ({
+          source: item.source,
+          status: item.result.status,
+          facts: item.result.facts,
+        })),
+      );
+      const unchanged =
+        factsHash === analysis.factsHash && analysis.summary
+          ? analysis.summary
+          : null;
+      let summary = unchanged;
+      let status: 'completed' | 'failed' = 'completed';
+      let errorMessage: string | null = null;
+      if (!unchanged) {
+        try {
+          summary = await this.claude.summarize({
+            supplierName: supplier.name,
+            assessment,
+            sources: collected,
+          });
+        } catch (error) {
+          status = 'failed';
+          errorMessage =
+            error instanceof Error ? error.message : 'Claude request failed';
+          summary = null;
+          this.logger.error(
+            `Claude summary failed for ${supplierId}: ${errorMessage}`,
+          );
+        }
       }
+      await this.analyses.update(analysis.id, {
+        status,
+        confidence: assessment.confidence,
+        summary,
+        legalName: assessment.legalName,
+        country: assessment.country,
+        sanctionsHit: assessment.sanctionsHit,
+        factsHash,
+        error: errorMessage,
+        updatedAt: new Date(),
+      });
 
       await this.publish(analysis.userId, analysis.supplierId);
     } catch (error) {

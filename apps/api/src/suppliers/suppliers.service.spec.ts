@@ -201,7 +201,6 @@ describe('SuppliersService', () => {
     expect(analyses.update).toHaveBeenCalledWith(analysisId, {
       status: 'queued',
       confidence: null,
-      summary: null,
       legalName: null,
       country: null,
       sanctionsHit: null,

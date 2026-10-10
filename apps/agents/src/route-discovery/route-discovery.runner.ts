@@ -7,6 +7,8 @@ import type {
 } from '@supplyeagle/types';
 import { In, Repository } from 'typeorm';
 import { SupplierAnalysis } from '../analysis/entities/supplier-analysis.entity.js';
+import { hashFacts } from '../hash-facts.js';
+import { PlaceLocation } from '../pipeline/entities/place-location.entity.js';
 import { categoryForSource, ROUTE_SOURCES } from './categories.js';
 import {
   fetchGdacs,
@@ -26,7 +28,8 @@ import {
   type DiscoveryBag,
 } from './finish.js';
 import { haversineKm, transitDays } from './geo.js';
-import { locatePlace, LocateError, type LocatedPlace } from './geocode.js';
+import { LocateError, type LocatedPlace } from './geocode.js';
+import { locateWithCache } from './place-cache.js';
 import { clip } from './http.js';
 import { fetchGoogleNews, fetchReliefWebNews } from './news.js';
 import { RouteRedisService } from './route-redis.service.js';
@@ -71,6 +74,8 @@ export class RouteDiscoveryRunner {
     private readonly checks: Repository<RouteSourceCheck>,
     @InjectRepository(SupplierAnalysis)
     private readonly supplierAnalyses: Repository<SupplierAnalysis>,
+    @InjectRepository(PlaceLocation)
+    private readonly places: Repository<PlaceLocation>,
     private readonly claude: RouteSummaryService,
     private readonly redis: RouteRedisService,
   ) {}
@@ -92,7 +97,6 @@ export class RouteDiscoveryRunner {
         where: { analysisId: analysis.id },
       });
       const origin = await this.locateEnd(route.origin);
-      await delay(1_100);
       const destination = await this.locateEnd(route.destination);
       if (!origin || !destination) {
         const failed = [
@@ -133,35 +137,43 @@ export class RouteDiscoveryRunner {
       );
 
       const days = transitDays(route.mode, haversineKm(origin, destination));
+      const factsHash = hashFacts(finished.checks);
+      const unchanged =
+        factsHash === analysis.factsHash && analysis.summary
+          ? analysis.summary
+          : null;
       await this.assessments.update(analysis.id, {
         status: 'completed',
         riskState: finished.decision.riskState,
         laneStatus: finished.decision.laneStatus,
         transitDays: days,
         why: clip(finished.decision.why, 300),
-        summary: null,
+        summary: unchanged,
+        factsHash,
         error: null,
         updatedAt: new Date(),
       });
       await this.publish(analysis.userId, analysis.routeId);
 
-      try {
-        const summary = await this.claude.summarize({
-          origin: route.origin,
-          destination: route.destination,
-          mode: route.mode,
-          decision: finished.decision,
-          checks: finished.checks,
-        });
-        await this.assessments.update(analysis.id, {
-          summary: clip(summary, 4_000),
-          updatedAt: new Date(),
-        });
-        await this.publish(analysis.userId, analysis.routeId);
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Claude request failed';
-        this.logger.error(`Route summary failed for ${routeId}: ${message}`);
+      if (!unchanged) {
+        try {
+          const summary = await this.claude.summarize({
+            origin: route.origin,
+            destination: route.destination,
+            mode: route.mode,
+            decision: finished.decision,
+            checks: finished.checks,
+          });
+          await this.assessments.update(analysis.id, {
+            summary: clip(summary, 4_000),
+            updatedAt: new Date(),
+          });
+          await this.publish(analysis.userId, analysis.routeId);
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : 'Claude request failed';
+          this.logger.error(`Route summary failed for ${routeId}: ${message}`);
+        }
       }
     } catch (error) {
       const message =
@@ -191,7 +203,12 @@ export class RouteDiscoveryRunner {
 
   private async locateEnd(place: string): Promise<LocatedPlace | null> {
     try {
-      return await locatePlace(place);
+      return await locateWithCache(place, {
+        findOne: async (query) => this.places.findOne({ where: { query } }),
+        save: async (row) => {
+          await this.places.save(this.places.create(row));
+        },
+      });
     } catch (error) {
       if (error instanceof LocateError) {
         this.logger.warn(error.message);
@@ -553,10 +570,4 @@ function blank(
     disasters: [],
     suppliers: [],
   };
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
 }

@@ -48,6 +48,9 @@ export class SupplierAnalysis {
   @Column({ type: 'boolean', nullable: true })
   sanctionsHit: boolean | null;
 
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  factsHash: string | null;
+
   @Column({ type: 'text', nullable: true })
   error: string | null;
 

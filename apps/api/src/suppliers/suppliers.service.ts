@@ -186,7 +186,6 @@ export class SuppliersService {
     await this.analyses.update(current.id, {
       status: 'queued',
       confidence: null,
-      summary: null,
       legalName: null,
       country: null,
       sanctionsHit: null,
@@ -196,7 +195,6 @@ export class SuppliersService {
     current.updatedAt = assessedAt;
     current.status = 'queued';
     current.confidence = null;
-    current.summary = null;
     current.legalName = null;
     current.country = null;
     current.sanctionsHit = null;
@@ -251,7 +249,7 @@ export class SuppliersService {
     return {
       id: row.id,
       name: row.name,
-      country: row.country ?? null,
+      country: analysis?.country ?? row.country ?? null,
       createdAt: row.createdAt.toISOString(),
       assessedAt: assessedAt(analysis),
       analysisStatus: analysis?.status ?? null,

@@ -49,6 +49,9 @@ export class RouteAssessment {
   @Column({ type: 'text', nullable: true })
   summary: string | null;
 
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  factsHash: string | null;
+
   @Column({ type: 'text', nullable: true })
   error: string | null;
 

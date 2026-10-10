@@ -68,6 +68,33 @@ async function geocodeOpenMeteo(
 }
 
 async function geocodeNominatim(query: string): Promise<GeoPoint | null> {
+  return withNominatim(() => requestNominatim(query));
+}
+
+let nominatimChain: Promise<void> = Promise.resolve();
+
+function withNominatim<T>(run: () => Promise<T>): Promise<T> {
+  const execute = nominatimChain.then(async () => {
+    const started = Date.now();
+    try {
+      return await run();
+    } finally {
+      const remaining = 1_100 - (Date.now() - started);
+      if (remaining > 0) {
+        await new Promise((resolve) => {
+          setTimeout(resolve, remaining);
+        });
+      }
+    }
+  });
+  nominatimChain = execute.then(
+    () => undefined,
+    () => undefined,
+  );
+  return execute;
+}
+
+async function requestNominatim(query: string): Promise<GeoPoint | null> {
   const url = new URL('https://nominatim.openstreetmap.org/search');
   url.searchParams.set('q', query);
   url.searchParams.set('format', 'jsonv2');

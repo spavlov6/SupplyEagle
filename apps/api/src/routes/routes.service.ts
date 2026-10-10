@@ -212,21 +212,11 @@ export class RoutesService {
     const assessedAt = new Date();
     await this.assessments.update(current.id, {
       status: 'queued',
-      riskState: null,
-      laneStatus: null,
-      transitDays: null,
-      why: null,
-      summary: null,
       error: null,
       updatedAt: assessedAt,
     });
     current.updatedAt = assessedAt;
     current.status = 'queued';
-    current.riskState = null;
-    current.laneStatus = null;
-    current.transitDays = null;
-    current.why = null;
-    current.summary = null;
     current.error = null;
 
     const sources = current.sources ?? [];

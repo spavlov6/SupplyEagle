@@ -134,6 +134,7 @@ describe('AnalysisRunner', () => {
       legalName: 'Siemens Aktiengesellschaft',
       country: 'Germany',
       sanctionsHit: false,
+      factsHash: expect.any(String),
       error: null,
       updatedAt: expect.any(Date),
     });
@@ -160,8 +161,52 @@ describe('AnalysisRunner', () => {
       legalName: 'Siemens Aktiengesellschaft',
       country: 'Germany',
       sanctionsHit: false,
+      factsHash: expect.any(String),
       error: 'Claude unavailable',
       updatedAt: expect.any(Date),
     });
+  });
+
+  it('skips Claude when the collected facts are unchanged', async () => {
+    let stored: string | undefined;
+    analyses.update.mockImplementation(
+      async (_id: string, patch: { factsHash?: string }) => {
+        if (typeof patch.factsHash === 'string') {
+          stored = patch.factsHash;
+        }
+      },
+    );
+    claude.summarize.mockResolvedValue(
+      'GLEIF and Wikidata both place Siemens in Germany.',
+    );
+    await runner.run(supplierId);
+    expect(claude.summarize).toHaveBeenCalledTimes(1);
+
+    analyses.findOne.mockResolvedValue({
+      id: analysisId,
+      supplierId,
+      userId,
+      status: 'queued',
+      summary: 'GLEIF and Wikidata both place Siemens in Germany.',
+      factsHash: stored,
+      supplier: {
+        id: supplierId,
+        name: 'Siemens AG',
+        country: null,
+      },
+    });
+    claude.summarize.mockClear();
+
+    await runner.run(supplierId);
+
+    expect(claude.summarize).not.toHaveBeenCalled();
+    expect(analyses.update).toHaveBeenLastCalledWith(
+      analysisId,
+      expect.objectContaining({
+        status: 'completed',
+        summary: 'GLEIF and Wikidata both place Siemens in Germany.',
+        factsHash: stored,
+      }),
+    );
   });
 });

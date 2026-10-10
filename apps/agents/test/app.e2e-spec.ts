@@ -4,9 +4,17 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AnalysisModule } from '../src/analysis/analysis.module.js';
 import { AppModule } from '../src/app.module.js';
+import { PipelineModule } from '../src/pipeline/pipeline.module.js';
+import { RouteDiscoveryModule } from '../src/route-discovery/route-discovery.module.js';
 
 @Module({})
 class EmptyAnalysisModule {}
+
+@Module({})
+class EmptyRouteModule {}
+
+@Module({})
+class EmptyPipelineModule {}
 
 describe('Health (e2e)', () => {
   let app: INestApplication<App>;
@@ -17,6 +25,10 @@ describe('Health (e2e)', () => {
     })
       .overrideModule(AnalysisModule)
       .useModule(EmptyAnalysisModule)
+      .overrideModule(RouteDiscoveryModule)
+      .useModule(EmptyRouteModule)
+      .overrideModule(PipelineModule)
+      .useModule(EmptyPipelineModule)
       .compile();
 
     app = moduleFixture.createNestApplication();
