@@ -828,6 +828,102 @@ input:not([type='checkbox']):focus-visible {
   text-decoration: underline;
 }
 
+.lane-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.mode-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px;
+  padding: 0.12rem 0.4rem;
+  background: var(--secondary);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+
+.why-cell {
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.option-field {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.option-field legend {
+  padding: 0;
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.mode-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem 1.25rem;
+}
+
+.mode-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+}
+
+.mode-choice input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--primary);
+}
+
+.supplier-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.supplier-chip {
+  height: auto;
+  margin: 0;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  border-radius: 999px;
+  box-shadow: none;
+  padding: 0.35rem 0.7rem;
+  font-size: 13px;
+}
+
+.supplier-chip:hover,
+.supplier-chip:hover:not(:disabled) {
+  background: var(--muted);
+}
+
+.supplier-chip[aria-pressed='true'] {
+  background: var(--secondary);
+  color: var(--primary);
+  border-color: transparent;
+}
+
+.supplier-chip[aria-pressed='true']:hover,
+.supplier-chip[aria-pressed='true']:hover:not(:disabled) {
+  background: var(--secondary);
+}
+
 @media (max-width: 800px) {
   .supplier-detail .suppliers-heading {
     align-items: flex-start;

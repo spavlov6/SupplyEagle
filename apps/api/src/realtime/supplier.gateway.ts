@@ -5,10 +5,14 @@ import {
 } from '@nestjs/websockets';
 import { Logger, type OnModuleInit } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import type { AnalysisUpdatedMessage } from '@supplyeagle/types';
+import type {
+  AnalysisUpdatedMessage,
+  RouteAssessmentUpdatedMessage,
+} from '@supplyeagle/types';
 import type { Server, Socket } from 'socket.io';
 import { readCorsOrigin } from './cors-origin.js';
 import { RedisService } from './redis.service.js';
+import { RouteRedisService } from './route-redis.service.js';
 import { userRoom } from './supplier-events.js';
 
 @WebSocketGateway({
@@ -25,6 +29,7 @@ export class SupplierGateway implements OnModuleInit, OnGatewayConnection {
   constructor(
     private readonly jwt: JwtService,
     private readonly redis: RedisService,
+    private readonly routeRedis: RouteRedisService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -37,6 +42,23 @@ export class SupplierGateway implements OnModuleInit, OnGatewayConnection {
           return;
         case 'supplier.created':
         case 'supplier.reassess':
+          return;
+        default: {
+          const unexpected: never = event;
+          void unexpected;
+          return;
+        }
+      }
+    });
+    await this.routeRedis.listen((event) => {
+      switch (event.type) {
+        case 'route.assessment.updated':
+          this.server.to(userRoom(event.userId)).emit('route.assessment.updated', {
+            routeId: event.routeId,
+          } satisfies RouteAssessmentUpdatedMessage);
+          return;
+        case 'route.created':
+        case 'route.reassess':
           return;
         default: {
           const unexpected: never = event;

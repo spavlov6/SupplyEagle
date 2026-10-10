@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { queryKeys } from '../../lib/query-keys';
 import { readAccessToken } from '../auth/access-token';
-import { connectSupplierSocket } from './supplier-socket';
+import { acquireRealtimeSocket, releaseRealtimeSocket } from './supplier-socket';
 
 export function useSupplierRealtime(): void {
   const queryClient = useQueryClient();
@@ -13,15 +13,20 @@ export function useSupplierRealtime(): void {
       return;
     }
 
-    const socket = connectSupplierSocket(token);
-    const onUpdated = () => {
+    const socket = acquireRealtimeSocket(token);
+    const onSuppliers = () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.suppliers.all });
     };
-    socket.on('analysis.updated', onUpdated);
+    const onRoutes = () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.routes.all });
+    };
+    socket.on('analysis.updated', onSuppliers);
+    socket.on('route.assessment.updated', onRoutes);
 
     return () => {
-      socket.off('analysis.updated', onUpdated);
-      socket.disconnect();
+      socket.off('analysis.updated', onSuppliers);
+      socket.off('route.assessment.updated', onRoutes);
+      releaseRealtimeSocket(token);
     };
   }, [queryClient, token]);
 }

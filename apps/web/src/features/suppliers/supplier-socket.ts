@@ -1,12 +1,56 @@
-import type { AnalysisUpdatedMessage } from '@supplyeagle/types';
+import type {
+  AnalysisUpdatedMessage,
+  RouteAssessmentUpdatedMessage,
+} from '@supplyeagle/types';
 import { io, type Socket } from 'socket.io-client';
 
-export type SupplierSocket = Socket<
-  { 'analysis.updated': (message: AnalysisUpdatedMessage) => void },
+export type RealtimeSocket = Socket<
+  {
+    'analysis.updated': (message: AnalysisUpdatedMessage) => void;
+    'route.assessment.updated': (message: RouteAssessmentUpdatedMessage) => void;
+  },
   Record<string, never>
 >;
 
-export function connectSupplierSocket(token: string): SupplierSocket {
+type CachedSocket = {
+  token: string;
+  socket: RealtimeSocket;
+  refs: number;
+};
+
+let cached: CachedSocket | null = null;
+
+export function acquireRealtimeSocket(token: string): RealtimeSocket {
+  if (cached?.token === token) {
+    cached.refs += 1;
+    return cached.socket;
+  }
+
+  if (cached) {
+    cached.socket.disconnect();
+    cached = null;
+  }
+
+  const socket = openSocket(token);
+  cached = { token, socket, refs: 1 };
+  return socket;
+}
+
+export function releaseRealtimeSocket(token: string): void {
+  if (!cached || cached.token !== token) {
+    return;
+  }
+
+  cached.refs -= 1;
+  if (cached.refs > 0) {
+    return;
+  }
+
+  cached.socket.disconnect();
+  cached = null;
+}
+
+function openSocket(token: string): RealtimeSocket {
   const options = {
     path: '/socket.io',
     auth: { token },

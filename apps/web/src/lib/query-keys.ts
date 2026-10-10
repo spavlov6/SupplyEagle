@@ -12,4 +12,9 @@ export const queryKeys = {
     list: () => [...queryKeys.suppliers.all, 'list'] as const,
     detail: (id: string) => [...queryKeys.suppliers.all, 'detail', id] as const,
   },
+  routes: {
+    all: ['routes'] as const,
+    list: () => [...queryKeys.routes.all, 'list'] as const,
+    detail: (id: string) => [...queryKeys.routes.all, 'detail', id] as const,
+  },
 };

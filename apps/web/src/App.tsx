@@ -4,6 +4,8 @@ import { RequireAuth } from './features/auth/require-auth';
 import { SignInPage } from './features/auth/sign-in-page';
 import { SignUpPage } from './features/auth/sign-up-page';
 import { HealthPage } from './features/health/health-page';
+import { RouteDetailsPage } from './features/routes/route-details-page';
+import { RoutesPage } from './features/routes/routes-page';
 import { SupplierDetailsPage } from './features/suppliers/supplier-details-page';
 import { SuppliersPage } from './features/suppliers/suppliers-page';
 import { AuthLayout } from './layouts/auth-layout';
@@ -23,6 +25,8 @@ export function App() {
           <Route path="/" element={<HealthPage />} />
           <Route path="/suppliers" element={<SuppliersPage />} />
           <Route path="/suppliers/:supplierId" element={<SupplierDetailsPage />} />
+          <Route path="/routes" element={<RoutesPage />} />
+          <Route path="/routes/:routeId" element={<RouteDetailsPage />} />
         </Route>
       </Route>
     </Routes>

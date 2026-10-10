@@ -10,6 +10,28 @@ export type {
   HealthStatus,
 } from './health.js';
 export type {
+  CreateRouteRequest,
+  LaneStatus,
+  RiskState,
+  RouteAgreement,
+  RouteAssessment,
+  RouteAssessmentUpdatedEvent,
+  RouteAssessmentUpdatedMessage,
+  RouteCreatedEvent,
+  RouteDetail,
+  RouteDetailResponse,
+  RouteEvent,
+  RouteLinkedSupplier,
+  RouteListItem,
+  RouteListResponse,
+  RouteReassessEvent,
+  RouteSourceCategory,
+  RouteSourceCheck,
+  RouteSourceFacts,
+  RouteSourceName,
+  ShippingMode,
+} from './route.js';
+export type {
   AnalysisConfidence,
   AnalysisStatus,
   AnalysisUpdatedEvent,

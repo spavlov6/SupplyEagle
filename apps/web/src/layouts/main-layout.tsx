@@ -18,6 +18,7 @@ export function MainLayout() {
               Status
             </NavLink>
             <NavLink to="/suppliers">Suppliers</NavLink>
+            <NavLink to="/routes">Routes</NavLink>
           </nav>
         </div>
         <div className="app-header-actions">
