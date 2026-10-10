@@ -1,5 +1,10 @@
 import type {
+  AlertCreatedMessage,
   AnalysisUpdatedMessage,
+  PipelineCompletedMessage,
+  PipelineStageMessage,
+  PipelineStartedMessage,
+  RecommendationCreatedMessage,
   RouteAssessmentUpdatedMessage,
 } from '@supplyeagle/types';
 import { io, type Socket } from 'socket.io-client';
@@ -7,7 +12,15 @@ import { io, type Socket } from 'socket.io-client';
 export type RealtimeSocket = Socket<
   {
     'analysis.updated': (message: AnalysisUpdatedMessage) => void;
-    'route.assessment.updated': (message: RouteAssessmentUpdatedMessage) => void;
+    'route.assessment.updated': (
+      message: RouteAssessmentUpdatedMessage,
+    ) => void;
+    'pipeline.started': (message: PipelineStartedMessage) => void;
+    'pipeline.stage': (message: PipelineStageMessage) => void;
+    'pipeline.completed': (message: PipelineCompletedMessage) => void;
+    'schedule.updated': () => void;
+    'alert.created': (message: AlertCreatedMessage) => void;
+    'recommendation.created': (message: RecommendationCreatedMessage) => void;
   },
   Record<string, never>
 >;

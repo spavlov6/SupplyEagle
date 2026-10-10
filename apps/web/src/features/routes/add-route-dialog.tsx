@@ -92,9 +92,12 @@ export function AddRouteDialog({ onClose }: AddRouteDialogProps) {
       >
         <h2 id={titleId}>Add route</h2>
         <p id={descriptionId} className="dialog-copy">
-          Air or sea cargo between two places, linked to suppliers you already monitor.
+          Air or sea cargo between two places, linked to suppliers you already
+          monitor.
         </p>
-        {suppliersQuery.isPending ? <p className="detail">Loading suppliers…</p> : null}
+        {suppliersQuery.isPending ? (
+          <p className="detail">Loading suppliers…</p>
+        ) : null}
         {suppliersQuery.isError ? (
           <p className="form-error">Could not load suppliers.</p>
         ) : null}
@@ -107,10 +110,19 @@ export function AddRouteDialog({ onClose }: AddRouteDialogProps) {
           </p>
         ) : null}
         {suppliers.length > 0 ? (
-          <form className="auth-form" onSubmit={(event) => void onSubmit(event)}>
+          <form
+            className="auth-form"
+            onSubmit={(event) => void onSubmit(event)}
+          >
             <label className="field">
               <span>Origin</span>
-              <input name="origin" type="text" maxLength={200} required autoFocus />
+              <input
+                name="origin"
+                type="text"
+                maxLength={200}
+                required
+                autoFocus
+              />
             </label>
             <label className="field">
               <span>Destination</span>
@@ -118,7 +130,11 @@ export function AddRouteDialog({ onClose }: AddRouteDialogProps) {
             </label>
             <fieldset className="option-field">
               <legend>Suppliers</legend>
-              <div className="supplier-chips" role="group" aria-label="Suppliers">
+              <div
+                className="supplier-chips"
+                role="group"
+                aria-label="Suppliers"
+              >
                 {suppliers.map((supplier) => (
                   <button
                     key={supplier.id}
@@ -141,13 +157,17 @@ export function AddRouteDialog({ onClose }: AddRouteDialogProps) {
                 </label>
                 <label className="mode-choice">
                   <input type="radio" name="mode" value="sea" />
-                  Sea cargo
+                  Sea
                 </label>
               </div>
             </fieldset>
             {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
             <div className="dialog-actions">
-              <button type="button" className="button-secondary" onClick={onClose}>
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={onClose}
+              >
                 Cancel
               </button>
               <button type="submit" disabled={createRoute.isPending}>

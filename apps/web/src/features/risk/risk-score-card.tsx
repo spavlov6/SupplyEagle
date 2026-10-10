@@ -42,7 +42,7 @@ export function RiskScoreCard(props: RiskScoreCardProps) {
     <section className="card brief-card risk-score-card" aria-live="polite">
       <div className="risk-score-head">
         <div>
-          <h2>Risk score</h2>
+          <h2>{kind === 'route' ? 'Corridor score' : 'Risk score'}</h2>
           <p className="risk-score-kicker">{kicker(kind)}</p>
         </div>
         {kind === 'supplier' && result ? <ScoreTotal result={result} /> : null}

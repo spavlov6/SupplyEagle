@@ -12,11 +12,8 @@ import { AddRouteDialog } from './add-route-dialog';
 import { LaneTitle } from './lane-title';
 import { useRoutesQuery } from './use-routes';
 
-type Density = 'comfortable' | 'compact';
-
 export function RoutesPage() {
   const routesQuery = useRoutesQuery();
-  const [density, setDensity] = useState<Density>('comfortable');
   const [dialogOpen, setDialogOpen] = useState(false);
   const routes = routesQuery.data?.routes ?? [];
 
@@ -28,17 +25,6 @@ export function RoutesPage() {
           <p className="suppliers-subtitle">{subtitle(routesQuery)}</p>
         </div>
         <div className="suppliers-heading-actions">
-          <button
-            type="button"
-            className="density-toggle"
-            onClick={() =>
-              setDensity((current) =>
-                current === 'comfortable' ? 'compact' : 'comfortable',
-              )
-            }
-          >
-            density: <span>{density}</span>
-          </button>
           <button type="button" onClick={() => setDialogOpen(true)}>
             Add route
           </button>
@@ -47,14 +33,7 @@ export function RoutesPage() {
 
       <section className="card suppliers-card" aria-live="polite">
         <div className="suppliers-scroll">
-          <table
-            className={
-              density === 'compact'
-                ? 'suppliers-table compact'
-                : 'suppliers-table'
-            }
-            aria-label="Routes"
-          >
+          <table className="suppliers-table" aria-label="Routes">
             <thead>
               <tr>
                 <th>Lane</th>
@@ -100,11 +79,6 @@ export function RoutesPage() {
             </tbody>
           </table>
         </div>
-        {routesQuery.data ? (
-          <p className="suppliers-footer">
-            showing {routes.length} of {routes.length}
-          </p>
-        ) : null}
       </section>
 
       {dialogOpen ? (
@@ -127,7 +101,7 @@ function subtitle(query: ReturnType<typeof useRoutesQuery>): string {
   const disrupted = routes.filter(
     (route) => route.laneStatus === 'disrupted',
   ).length;
-  return `${routes.length} lanes · ${disrupted} disrupted · risk propagation shown, never guessed`;
+  return `${routes.length} lanes · ${disrupted} disrupted`;
 }
 
 function RouteRow({ route }: { route: RouteListItem }) {

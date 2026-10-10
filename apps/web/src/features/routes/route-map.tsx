@@ -82,20 +82,19 @@ function LaneMap({
 
     const map = createMap(element, {
       scrollWheelZoom: false,
-      worldCopyJump: true,
+      // The lane is one unwrapped track, so its longitudes can sit outside
+      // [-180, 180]. Copy-jump would treat a drag as a trip into the other
+      // world and leave the track behind.
+      worldCopyJump: false,
       zoomControl: false,
       attributionControl: true,
       zoomSnap: 0.1,
     });
-    control.zoom({ position: 'topright' }).addTo(map);
-    const attribution = 'Tiles &copy; Esri';
+    control.zoom({ position: 'topleft' }).addTo(map);
+    const attribution = '&copy; Esri';
     tileLayer(
       'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
       { attribution, maxZoom: 16 },
-    ).addTo(map);
-    tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
-      { maxZoom: 16 },
     ).addTo(map);
 
     const line = laneLine(from, to);
@@ -171,7 +170,7 @@ function mark(
     .bindTooltip(name, {
       permanent: true,
       direction,
-      offset: [0, direction === 'top' ? -8 : 8],
+      offset: [0, direction === 'top' ? -12 : 12],
       className: 'route-map-label',
       opacity: 1,
     })

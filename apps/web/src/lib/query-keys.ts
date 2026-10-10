@@ -17,6 +17,22 @@ export const queryKeys = {
     list: () => [...queryKeys.routes.all, 'list'] as const,
     detail: (id: string) => [...queryKeys.routes.all, 'detail', id] as const,
   },
+  pipeline: {
+    all: ['pipeline'] as const,
+    status: () => [...queryKeys.pipeline.all, 'status'] as const,
+    runs: () => [...queryKeys.pipeline.all, 'runs'] as const,
+  },
+  recommendations: {
+    all: ['recommendations'] as const,
+    list: (status: string) =>
+      [...queryKeys.recommendations.all, 'list', status] as const,
+    detail: (id: string) =>
+      [...queryKeys.recommendations.all, 'detail', id] as const,
+  },
+  overview: {
+    all: ['overview'] as const,
+    home: () => [...queryKeys.overview.all, 'home'] as const,
+  },
   places: {
     all: ['places'] as const,
     lane: (origin: string, destination: string) =>

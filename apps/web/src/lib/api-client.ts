@@ -1,7 +1,7 @@
 const API_BASE = import.meta.env.VITE_API_URL ?? '/api';
 
 type ApiClientOptions = {
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'PUT';
   body?: unknown;
   token?: string | null;
 };
