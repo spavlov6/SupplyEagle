@@ -36,7 +36,6 @@ function supplierInput(
   };
 }
 
-
 describe('route corridor score', () => {
   it('scores a Shanghai to Rotterdam sea lane from piracy, the Red Sea, and canals', () => {
     const score = scoreLane({
@@ -60,26 +59,36 @@ describe('route corridor score', () => {
     expect(score.band).toBe('critical');
   });
 
-  it('does not treat the same air lane as piracy, and flags the direct track', () => {
+  it('scores an air lane on shared factors and airspace, not piracy', () => {
     const score = scoreLane({
       mode: 'air',
       origin: shanghai,
       destination: rotterdam,
     });
-    expect(score.factors[0]).toMatchObject({
-      title: 'Piracy',
-      points: 0,
-      impact: 'clear',
-    });
-    expect(score.factors[3]).toMatchObject({
+    expect(score.factors.map((factor) => factor.title)).toEqual([
+      'Geopolitical',
+      'Sanctions',
+      'Airspace',
+    ]);
+    expect(score.factors[2]).toMatchObject({
       title: 'Airspace',
       points: 40,
       impact: 'elevated',
     });
-    expect(score.factors[3]?.evidence).toContain('Russian airspace');
-    expect(score.factors[2]?.points).toBe(0);
+    expect(score.factors[2]?.evidence).toContain('Russian airspace');
+    expect(score.factors[1]?.points).toBe(0);
     expect(score.total).toBe(40);
     expect(score.band).toBe('elevated');
+  });
+
+  it('omits piracy when an air lane cannot be placed', () => {
+    const score = scoreLane({ mode: 'air', origin: null, destination: null });
+    expect(score.factors.map((factor) => factor.title)).toEqual([
+      'Geopolitical',
+      'Sanctions',
+      'Airspace',
+    ]);
+    expect(score.band).toBe('stable');
   });
 
   it('keeps a north Atlantic sea lane clear', () => {

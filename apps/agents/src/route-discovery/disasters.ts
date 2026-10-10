@@ -1,3 +1,9 @@
+import {
+  affectedCountryNames,
+  countriesOnLane,
+  hazardLead,
+  isCentroidEvent,
+} from './disaster-place.js';
 import { haversineKm, type GeoPoint } from './geo.js';
 import type { LocatedPlace } from './geocode.js';
 import {
@@ -229,6 +235,7 @@ function geoJsonReports(
           .trim(),
         hazardClass,
         point: feature.point,
+        properties: feature.properties,
         url:
           asString(feature.properties?.url) ??
           (urlRecord ? asString(urlRecord.report) : null),
@@ -246,12 +253,30 @@ function assignReports(input: {
   title: string;
   hazardClass: string;
   point: GeoPoint | null;
+  properties?: Record<string, unknown> | null;
   url: string | null;
   origin: LocatedPlace;
   destination: LocatedPlace;
 }): DisasterReport[] {
   if (input.hazardClass === 'other') {
     return [];
+  }
+
+  const countries = affectedCountryNames(input.properties ?? null);
+  const wide =
+    isCentroidEvent(input.properties ?? null) || countries.length >= 4;
+  if (wide) {
+    return countriesOnLane(
+      countries,
+      input.origin.country,
+      input.destination.country,
+    ).map((end) => ({
+      provider: input.provider,
+      place: end.place,
+      hazardClass: input.hazardClass,
+      headline: `${hazardLead(input.title)} in ${end.country}`,
+      url: input.url,
+    }));
   }
 
   const ends = assignEnds(

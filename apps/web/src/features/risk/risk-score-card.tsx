@@ -1,3 +1,4 @@
+import type { ShippingMode } from '@supplyeagle/types';
 import {
   AIRSPACE_POINTS,
   GEOPOLITICAL_HIGH_POINTS,
@@ -23,13 +24,20 @@ import {
   type RiskScore,
 } from './score';
 
-export function RiskScoreCard({
-  kind,
-  result,
-}: {
-  kind: 'route' | 'supplier';
-  result: RiskScore | null;
-}) {
+type RiskScoreCardProps =
+  | {
+      kind: 'supplier';
+      result: RiskScore | null;
+    }
+  | {
+      kind: 'route';
+      mode: ShippingMode;
+      result: RiskScore | null;
+    };
+
+export function RiskScoreCard(props: RiskScoreCardProps) {
+  const { kind, result } = props;
+  const mode = props.kind === 'route' ? props.mode : null;
   return (
     <section className="card brief-card risk-score-card" aria-live="polite">
       <div className="risk-score-head">
@@ -57,7 +65,7 @@ export function RiskScoreCard({
         <FactorList factors={result.factors} />
       ) : null}
 
-      <ScoreLegend kind={kind} />
+      <ScoreLegend kind={kind} mode={mode} />
     </section>
   );
 }
@@ -144,14 +152,20 @@ function FactorList({ factors }: { factors: RiskScore['factors'] }) {
   );
 }
 
-function ScoreLegend({ kind }: { kind: 'route' | 'supplier' }) {
+function ScoreLegend({
+  kind,
+  mode,
+}: {
+  kind: 'route' | 'supplier';
+  mode: ShippingMode | null;
+}) {
   return (
     <details className="score-legend">
       <summary>How this score is made</summary>
       <div className="score-legend-body">
         <p>
-          Each factor adds its points once, using its strongest reading. The
-          four totals are added, then capped at {SCORE_CAP}.
+          Each factor adds its points once, using its strongest reading. Those
+          points are added, then capped at {SCORE_CAP}.
         </p>
         <ul className="score-bands">
           <li>
@@ -167,16 +181,22 @@ function ScoreLegend({ kind }: { kind: 'route' | 'supplier' }) {
             <span className="risk-pill critical">70–{SCORE_CAP}</span> Critical
           </li>
         </ul>
-        {kind === 'route' ? <RouteWeights /> : <SupplierWeights />}
+        {kind === 'route' ? (
+          <RouteWeights mode={mode === 'sea' ? 'sea' : 'air'} />
+        ) : (
+          <SupplierWeights />
+        )}
         <p>
           A failed check, with nothing corroborated in that factor, adds{' '}
           {WARNING_POINTS} as a warning rather than a hazard.
         </p>
         {kind === 'route' ? (
           <p>
-            Sea scores use the usual ocean route, not the straight line on the
-            map. Air scores use the direct track. The status pill above stays
-            the strongest live signal from the sources.
+            {mode === 'sea'
+              ? 'Sea scores use the usual ocean route, not the straight line on the map.'
+              : 'Air scores use the direct track shown on the map.'}{' '}
+            The status pill above stays the strongest live signal from the
+            sources.
           </p>
         ) : (
           <p>
@@ -190,24 +210,37 @@ function ScoreLegend({ kind }: { kind: 'route' | 'supplier' }) {
   );
 }
 
-function RouteWeights() {
-  return (
-    <>
-      <p>
-        Piracy applies only to sea lanes. A high corridor, such as the Gulf of
-        Aden or the Gulf of Guinea, scores {PIRACY_HIGH_POINTS}. A lesser one,
-        such as Malacca on its own, scores {PIRACY_MEDIUM_POINTS}. Geopolitical
-        exposure scores {GEOPOLITICAL_HIGH_POINTS} for the Red Sea, Hormuz, the
-        Black Sea, or an end country in active conflict, and{' '}
-        {GEOPOLITICAL_MEDIUM_POINTS} for a tension sea such as the South China
-        Sea. An origin or destination under a broad sanctions program — Russia,
-        Belarus, Iran, Syria, North Korea, or Cuba — scores{' '}
-        {SANCTIONED_END_POINTS}. A sea passage through a major canal or strait
-        scores {PASSAGE_POINTS}. A direct air track through restricted airspace
-        scores {AIRSPACE_POINTS}.
-      </p>
-    </>
-  );
+function RouteWeights({ mode }: { mode: ShippingMode }) {
+  switch (mode) {
+    case 'air':
+      return (
+        <p>
+          Geopolitical exposure scores {GEOPOLITICAL_HIGH_POINTS} when an origin
+          or destination is in active conflict. An origin or destination under a
+          broad sanctions program — Russia, Belarus, Iran, Syria, North Korea,
+          or Cuba — scores {SANCTIONED_END_POINTS}. A direct air track through
+          restricted airspace scores {AIRSPACE_POINTS}.
+        </p>
+      );
+    case 'sea':
+      return (
+        <p>
+          A high piracy corridor, such as the Gulf of Aden or the Gulf of
+          Guinea, scores {PIRACY_HIGH_POINTS}. A lesser one, such as Malacca on
+          its own, scores {PIRACY_MEDIUM_POINTS}. Geopolitical exposure scores{' '}
+          {GEOPOLITICAL_HIGH_POINTS} for the Red Sea, Hormuz, the Black Sea, or
+          an end country in active conflict, and {GEOPOLITICAL_MEDIUM_POINTS}{' '}
+          for a tension sea such as the South China Sea. An origin or
+          destination under a broad sanctions program — Russia, Belarus, Iran,
+          Syria, North Korea, or Cuba — scores {SANCTIONED_END_POINTS}. A
+          passage through a major canal or strait scores {PASSAGE_POINTS}.
+        </p>
+      );
+    default: {
+      const unexpected: never = mode;
+      return unexpected;
+    }
+  }
 }
 
 function SupplierWeights() {

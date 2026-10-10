@@ -83,24 +83,7 @@ export function corridorFactors(input: {
   const origin = input.origin;
   const destination = input.destination;
   if (!origin || !destination) {
-    return [
-      clearFactor(
-        'Piracy',
-        'The lane could not be placed, so piracy is not scored.',
-      ),
-      warning(
-        'Geopolitical',
-        'Both ends need a position before corridor risk can be scored.',
-      ),
-      warning(
-        'Sanctions',
-        'The countries on this lane could not be identified.',
-      ),
-      clearFactor(
-        input.mode === 'air' ? 'Airspace' : 'Passage',
-        'The lane could not be placed, so this is not scored.',
-      ),
-    ];
+    return unplacedFactors(input.mode);
   }
 
   const originCode = origin.countryCode?.toUpperCase() ?? null;
@@ -111,19 +94,64 @@ export function corridorFactors(input: {
     input.mode === 'sea' ? seaExposure(originBasin, destinationBasin) : null;
   const conflict = conflictEnds(origin, destination);
 
-  return [
-    piracyFactor(input.mode, sea),
+  const shared = [
     geopoliticalFactor(input.mode, sea, conflict),
     sanctionsFactor(origin, destination, originCode, destinationCode),
-    input.mode === 'air'
-      ? airspaceFactor(origin, destination)
-      : passageFactor(sea?.passages ?? []),
   ];
+  switch (input.mode) {
+    case 'air':
+      return [...shared, airspaceFactor(origin, destination)];
+    case 'sea':
+      return [piracyFactor(sea), ...shared, passageFactor(sea?.passages ?? [])];
+    default: {
+      const unexpected: never = input.mode;
+      return unexpected;
+    }
+  }
 }
 
-function piracyFactor(mode: ShippingMode, sea: Exposure | null): RiskFactor {
-  if (mode === 'air' || !sea) {
-    return clearFactor('Piracy', 'Air cargo is not exposed to piracy.');
+function unplacedFactors(mode: ShippingMode): RiskFactor[] {
+  const shared = [
+    warning(
+      'Geopolitical',
+      'Both ends need a position before corridor risk can be scored.',
+    ),
+    warning('Sanctions', 'The countries on this lane could not be identified.'),
+  ];
+  switch (mode) {
+    case 'air':
+      return [
+        ...shared,
+        clearFactor(
+          'Airspace',
+          'The lane could not be placed, so this is not scored.',
+        ),
+      ];
+    case 'sea':
+      return [
+        clearFactor(
+          'Piracy',
+          'The lane could not be placed, so piracy is not scored.',
+        ),
+        ...shared,
+        clearFactor(
+          'Passage',
+          'The lane could not be placed, so this is not scored.',
+        ),
+      ];
+    default: {
+      const unexpected: never = mode;
+      return unexpected;
+    }
+  }
+}
+
+function piracyFactor(sea: Exposure | null): RiskFactor {
+  if (!sea) {
+    return clearFactor(
+      'Piracy',
+      'No major piracy corridor on the usual sea lane.',
+    );
   }
 
   if (sea.piracy.some((name) => /Aden|Guinea/.test(name))) {
@@ -183,7 +211,9 @@ function geopoliticalFactor(
 
   return clearFactor(
     'Geopolitical',
-    'No major geopolitical corridor on this lane.',
+    mode === 'air'
+      ? 'Neither end is in active conflict.'
+      : 'No major geopolitical corridor on this lane.',
   );
 }
 

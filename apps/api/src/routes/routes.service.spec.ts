@@ -151,6 +151,7 @@ describe('RoutesService', () => {
       destination: 'Rotterdam',
       mode: 'sea',
       createdAt: '2026-10-10T12:00:00.000Z',
+      assessedAt: '2026-10-10T12:00:00.000Z',
       analysisStatus: 'queued',
       laneStatus: null,
       riskState: null,

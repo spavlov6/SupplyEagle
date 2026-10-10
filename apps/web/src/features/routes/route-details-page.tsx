@@ -19,6 +19,7 @@ import { Link, useParams } from 'react-router';
 import { ApiError } from '../../lib/api-client';
 import { RiskScoreCard } from '../risk/risk-score-card';
 import { scoreLane } from '../risk/score';
+import { focusDisasterHeadline } from './disaster-headline';
 import { LaneTitle } from './lane-title';
 import { useLanePlaces } from './lane-places';
 import { RouteMap } from './route-map';
@@ -154,9 +155,12 @@ function RouteDetailView({
         checked={checked}
         total={sources.length}
         sources={sources}
+        originCountry={places.data?.[0]?.country ?? null}
+        destinationCountry={places.data?.[1]?.country ?? null}
       />
       <RiskScoreCard
         kind="route"
+        mode={route.mode}
         result={
           places.isPending
             ? null
@@ -189,6 +193,8 @@ function RouteDetailView({
             assessing={assessing}
             origin={route.origin}
             destination={route.destination}
+            originCountry={places.data?.[0]?.country ?? null}
+            destinationCountry={places.data?.[1]?.country ?? null}
           />
         ))}
       </section>
@@ -203,6 +209,8 @@ function DecisionCard({
   checked,
   total,
   sources,
+  originCountry,
+  destinationCountry,
 }: {
   route: RouteDetail;
   assessment: RouteAssessment | null;
@@ -210,6 +218,8 @@ function DecisionCard({
   checked: number;
   total: number;
   sources: RouteSourceCheck[];
+  originCountry: string | null;
+  destinationCountry: string | null;
 }) {
   const structured = sources.some((source) => source.items.length > 0);
 
@@ -222,7 +232,7 @@ function DecisionCard({
           Checking {checked} of {total} sources
         </p>
       ) : null}
-      <ul className="brief-list">
+      <ul className="decision-stats">
         <Brief label="Lane" text={laneText(route, assessment, assessing)} />
         <Brief
           label="Risk"
@@ -245,6 +255,8 @@ function DecisionCard({
       <LaneBrief
         origin={route.origin}
         destination={route.destination}
+        originCountry={originCountry}
+        destinationCountry={destinationCountry}
         sources={sources}
       />
       {!assessing && !structured && assessment?.summary ? (
@@ -322,12 +334,16 @@ function SourceGroup({
   assessing,
   origin,
   destination,
+  originCountry,
+  destinationCountry,
 }: {
   title: string;
   sources: RouteSourceCheck[];
   assessing: boolean;
   origin: string;
   destination: string;
+  originCountry: string | null;
+  destinationCountry: string | null;
 }) {
   const details = useRef<HTMLDetailsElement>(null);
   const reported = sources.filter(
@@ -356,6 +372,8 @@ function SourceGroup({
             source={source}
             origin={origin}
             destination={destination}
+            originCountry={originCountry}
+            destinationCountry={destinationCountry}
           />
         ))}
       </ul>
@@ -367,10 +385,14 @@ function SourceRow({
   source,
   origin,
   destination,
+  originCountry,
+  destinationCountry,
 }: {
   source: RouteSourceCheck;
   origin: string;
   destination: string;
+  originCountry: string | null;
+  destinationCountry: string | null;
 }) {
   const view = sourceView(source);
   const reported = sourceFinding(source);
@@ -399,6 +421,8 @@ function SourceRow({
           items={source.items}
           origin={origin}
           destination={destination}
+          originCountry={originCountry}
+          destinationCountry={destinationCountry}
         />
       ) : (
         <p className="source-detail">
@@ -426,10 +450,14 @@ function SourceRow({
 function LaneBrief({
   origin,
   destination,
+  originCountry,
+  destinationCountry,
   sources,
 }: {
   origin: string;
   destination: string;
+  originCountry: string | null;
+  destinationCountry: string | null;
   sources: RouteSourceCheck[];
 }) {
   const tagged = sources.flatMap((source) =>
@@ -442,8 +470,18 @@ function LaneBrief({
 
   return (
     <div className="lane-brief">
-      <PlacePanel title={origin} place="origin" entries={tagged} />
-      <PlacePanel title={destination} place="destination" entries={tagged} />
+      <PlacePanel
+        title={origin}
+        place="origin"
+        country={originCountry}
+        entries={tagged}
+      />
+      <PlacePanel
+        title={destination}
+        place="destination"
+        country={destinationCountry}
+        entries={tagged}
+      />
     </div>
   );
 }
@@ -451,10 +489,12 @@ function LaneBrief({
 function PlacePanel({
   title,
   place,
+  country,
   entries,
 }: {
   title: string;
   place: RoutePlace;
+  country: string | null;
   entries: Array<{ item: RouteFinding; provider: RouteSourceName }>;
 }) {
   const here = entries.filter(
@@ -468,9 +508,24 @@ function PlacePanel({
         <p className="detail profile-empty">Nothing reported here.</p>
       ) : (
         <>
-          <FindingGroup title="Weather" entries={here} kind="weather" />
-          <FindingGroup title="News" entries={here} kind="news" />
-          <FindingGroup title="Disasters" entries={here} kind="disaster" />
+          <FindingGroup
+            title="Weather"
+            entries={here}
+            kind="weather"
+            country={country}
+          />
+          <FindingGroup
+            title="News"
+            entries={here}
+            kind="news"
+            country={country}
+          />
+          <FindingGroup
+            title="Disasters"
+            entries={here}
+            kind="disaster"
+            country={country}
+          />
         </>
       )}
     </section>
@@ -481,10 +536,12 @@ function FindingGroup({
   title,
   entries,
   kind,
+  country,
 }: {
   title: string;
   entries: Array<{ item: RouteFinding; provider: RouteSourceName }>;
   kind: 'weather' | 'news' | 'disaster';
+  country: string | null;
 }) {
   const matches = entries.filter((entry) => entry.item.kind === kind);
   if (matches.length === 0) {
@@ -505,6 +562,7 @@ function FindingGroup({
             waveHeightM: reading.waveHeightM,
           }}
           provider={null}
+          country={country}
         />
       </div>
     );
@@ -516,7 +574,11 @@ function FindingGroup({
       <ul className="finding-list">
         {matches.map((entry) => (
           <li key={`${entry.provider}-${findingKey(entry.item)}`}>
-            <FindingBody item={entry.item} provider={entry.provider} />
+            <FindingBody
+              item={entry.item}
+              provider={entry.provider}
+              country={country}
+            />
           </li>
         ))}
       </ul>
@@ -528,10 +590,14 @@ function SourceFindings({
   items,
   origin,
   destination,
+  originCountry,
+  destinationCountry,
 }: {
   items: RouteFinding[];
   origin: string;
   destination: string;
+  originCountry: string | null;
+  destinationCountry: string | null;
 }) {
   return (
     <ul className="finding-list source-findings">
@@ -544,7 +610,17 @@ function SourceFindings({
               {item.place === 'origin' ? origin : destination}
             </p>
           ) : null}
-          <FindingBody item={item} provider={null} />
+          <FindingBody
+            item={item}
+            provider={null}
+            country={
+              item.kind === 'supplier'
+                ? null
+                : item.place === 'origin'
+                  ? originCountry
+                  : destinationCountry
+            }
+          />
         </li>
       ))}
     </ul>
@@ -554,9 +630,11 @@ function SourceFindings({
 function FindingBody({
   item,
   provider,
+  country,
 }: {
   item: RouteFinding;
   provider: RouteSourceName | null;
+  country: string | null;
 }) {
   switch (item.kind) {
     case 'weather':
@@ -589,7 +667,11 @@ function FindingBody({
             {provider ? `${sourceTitle(provider)} · ` : ''}
             {labelize(item.hazard)}
           </p>
-          <p>{item.headline}</p>
+          <p>
+            {item.kind === 'disaster'
+              ? focusDisasterHeadline(item.headline, country)
+              : item.headline}
+          </p>
           {item.url ? (
             <a
               className="text-link"

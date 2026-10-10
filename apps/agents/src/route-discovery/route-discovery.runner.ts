@@ -141,6 +141,7 @@ export class RouteDiscoveryRunner {
         why: clip(finished.decision.why, 300),
         summary: null,
         error: null,
+        updatedAt: new Date(),
       });
       await this.publish(analysis.userId, analysis.routeId);
 
@@ -154,6 +155,7 @@ export class RouteDiscoveryRunner {
         });
         await this.assessments.update(analysis.id, {
           summary: clip(summary, 4_000),
+          updatedAt: new Date(),
         });
         await this.publish(analysis.userId, analysis.routeId);
       } catch (error) {
@@ -168,6 +170,7 @@ export class RouteDiscoveryRunner {
       await this.assessments.update(analysis.id, {
         status: 'failed',
         error: message,
+        updatedAt: new Date(),
       });
       await this.publish(analysis.userId, analysis.routeId);
     }
@@ -177,6 +180,7 @@ export class RouteDiscoveryRunner {
     await this.assessments.update(analysis.id, {
       status: 'running',
       error: null,
+      updatedAt: new Date(),
     });
     await this.checks.update(
       { analysisId: analysis.id },

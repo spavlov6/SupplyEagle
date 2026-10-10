@@ -1,8 +1,15 @@
 import { agreePlaces, type GeoPoint } from './geo.js';
-import { asNumber, asString, errorMessage, isRecord, requestJson } from './http.js';
+import {
+  asNumber,
+  asString,
+  errorMessage,
+  isRecord,
+  requestJson,
+} from './http.js';
 
 export type LocatedPlace = GeoPoint & {
   name: string;
+  country: string | null;
 };
 
 export class LocateError extends Error {
@@ -15,7 +22,7 @@ export class LocateError extends Error {
 }
 
 export async function locatePlace(query: string): Promise<LocatedPlace> {
-  let openMeteo: GeoPoint | null = null;
+  let openMeteo: (GeoPoint & { country: string | null }) | null = null;
   let nominatim: GeoPoint | null = null;
   try {
     [openMeteo, nominatim] = await Promise.all([
@@ -33,17 +40,20 @@ export async function locatePlace(query: string): Promise<LocatedPlace> {
     throw new LocateError(query);
   }
 
-  return { ...agreed, name: query };
+  return { ...agreed, name: query, country: openMeteo?.country ?? null };
 }
 
-async function geocodeOpenMeteo(query: string): Promise<GeoPoint | null> {
+async function geocodeOpenMeteo(
+  query: string,
+): Promise<(GeoPoint & { country: string | null }) | null> {
   const url = new URL('https://geocoding-api.open-meteo.com/v1/search');
   url.searchParams.set('name', query);
   url.searchParams.set('count', '1');
   url.searchParams.set('language', 'en');
   url.searchParams.set('format', 'json');
   const body = await requestJson(url.toString());
-  const result = isRecord(body) && Array.isArray(body.results) ? body.results[0] : null;
+  const result =
+    isRecord(body) && Array.isArray(body.results) ? body.results[0] : null;
   if (!isRecord(result)) {
     return null;
   }
@@ -54,7 +64,7 @@ async function geocodeOpenMeteo(query: string): Promise<GeoPoint | null> {
     return null;
   }
 
-  return { lat, lon };
+  return { lat, lon, country: asString(result.country) };
 }
 
 async function geocodeNominatim(query: string): Promise<GeoPoint | null> {

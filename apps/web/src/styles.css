@@ -670,6 +670,10 @@ input:not([type='checkbox']):focus-visible {
   animation: detail-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.supplier-detail > .route-map-card {
+  animation-name: detail-fade;
+}
+
 .supplier-detail > :nth-child(2) {
   animation-delay: 50ms;
 }
@@ -725,6 +729,33 @@ button:active:not(:disabled) {
 
 .brief-card {
   margin-top: 1.25rem;
+}
+
+.decision-stats {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+.decision-stats .brief-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--muted);
+}
+
+.decision-stats .brief-text {
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  font-weight: 650;
+  line-height: 1.3;
 }
 
 .brief-card h2,
@@ -1345,8 +1376,12 @@ button:active:not(:disabled) {
   position: relative;
 }
 
+.route-map-card .route-map,
+.route-map-card .route-map-loading {
+  height: clamp(220px, 52vw, min(540px, 68vh));
+}
+
 .route-map {
-  height: 320px;
   background: var(--muted);
   font-family: var(--font-sans);
 }
@@ -1356,8 +1391,9 @@ button:active:not(:disabled) {
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
-  height: 320px;
+  padding: 1rem;
   color: var(--muted-foreground);
+  text-align: center;
 }
 
 .route-map-loading p {
@@ -1365,17 +1401,12 @@ button:active:not(:disabled) {
 }
 
 .route-map-legend {
-  position: absolute;
-  z-index: 500;
-  bottom: 1.5rem;
-  left: 0.75rem;
   display: flex;
   gap: 0.65rem;
   margin: 0;
-  padding: 0.28rem 0.55rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-control);
-  background: color-mix(in oklch, var(--card) 92%, transparent);
+  padding: 0.55rem 0.85rem;
+  border-top: 1px solid var(--border);
+  background: var(--muted);
   font-size: 0.8125rem;
   line-height: 1.4;
   font-weight: 650;
@@ -1537,6 +1568,16 @@ button:active:not(:disabled) {
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+@keyframes detail-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
   }
 }
 
@@ -1806,6 +1847,11 @@ button:active:not(:disabled) {
 }
 
 @media (max-width: 720px) {
+  .route-map-card .route-map,
+  .route-map-card .route-map-loading {
+    height: clamp(200px, 62vw, 280px);
+  }
+
   .suppliers-page {
     width: calc(100% - 2rem);
   }

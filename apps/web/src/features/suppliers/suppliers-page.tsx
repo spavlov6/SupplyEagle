@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import type { AnalysisConfidence, Supplier } from '@supplyeagle/types';
+import { formatAssessed } from '../format-assessed';
 import { AddSupplierDialog } from './add-supplier-dialog';
 import { useSuppliersQuery } from './use-suppliers';
 
@@ -221,7 +222,9 @@ function SupplierRow({ supplier, selected, onToggle }: SupplierRowProps) {
       <td>
         <TrendSparkline />
       </td>
-      <td className="muted-cell">{formatAssessed(supplier.createdAt)}</td>
+      <td className="muted-cell">
+        {supplier.assessedAt ? formatAssessed(supplier.assessedAt) : '—'}
+      </td>
     </tr>
   );
 }
@@ -254,9 +257,10 @@ function riskView(supplier: Supplier): { tone: string; label: string } {
   }
 }
 
-function confidenceView(
-  confidence: AnalysisConfidence | null,
-): { tone: string; label: string } {
+function confidenceView(confidence: AnalysisConfidence | null): {
+  tone: string;
+  label: string;
+} {
   switch (confidence) {
     case 'verified':
       return { tone: 'stable', label: 'Verified' };
@@ -287,23 +291,4 @@ function TrendSparkline() {
       />
     </svg>
   );
-}
-
-function formatAssessed(createdAt: string, now = Date.now()): string {
-  const minutes = Math.floor((now - new Date(createdAt).getTime()) / 60_000);
-
-  if (!Number.isFinite(minutes) || minutes < 1) {
-    return 'just now';
-  }
-
-  if (minutes < 60) {
-    return `${minutes}m ago`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) {
-    return `${hours}h ago`;
-  }
-
-  return `${Math.floor(hours / 24)}d ago`;
 }

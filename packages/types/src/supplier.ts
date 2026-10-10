@@ -5,10 +5,7 @@ export type CreateSupplierRequest = {
 export type AnalysisStatus = 'queued' | 'running' | 'completed' | 'failed';
 
 export type AnalysisConfidence =
-  | 'verified'
-  | 'partial'
-  | 'conflicting'
-  | 'unverified';
+  'verified' | 'partial' | 'conflicting' | 'unverified';
 
 export type SourceName = 'opensanctions' | 'gleif' | 'wikidata';
 
@@ -34,6 +31,7 @@ export type Supplier = {
   name: string;
   country: string | null;
   createdAt: string;
+  assessedAt: string | null;
   analysisStatus: AnalysisStatus | null;
   confidence: AnalysisConfidence | null;
   sanctionsHit: boolean | null;
@@ -97,9 +95,7 @@ export type AnalysisUpdatedEvent = {
 };
 
 export type SupplierEvent =
-  | SupplierCreatedEvent
-  | SupplierReassessEvent
-  | AnalysisUpdatedEvent;
+  SupplierCreatedEvent | SupplierReassessEvent | AnalysisUpdatedEvent;
 
 export type AnalysisUpdatedMessage = {
   supplierId: string;

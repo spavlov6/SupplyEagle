@@ -11,6 +11,7 @@ const userId = '11111111-1111-1111-1111-111111111111';
 const supplierId = '22222222-2222-2222-2222-222222222222';
 const analysisId = '33333333-3333-3333-3333-333333333333';
 const createdAt = new Date('2026-10-10T12:00:00.000Z');
+const assessedAt = new Date('2026-10-10T18:30:00.000Z');
 
 describe('SuppliersService', () => {
   const suppliers = {
@@ -43,12 +44,14 @@ describe('SuppliersService', () => {
       updatedAt: createdAt,
       ...value,
     }));
-    analyses.save.mockImplementation(async (value: Partial<SupplierAnalysis>) => ({
-      id: analysisId,
-      createdAt,
-      updatedAt: createdAt,
-      ...value,
-    }));
+    analyses.save.mockImplementation(
+      async (value: Partial<SupplierAnalysis>) => ({
+        id: analysisId,
+        createdAt,
+        updatedAt: createdAt,
+        ...value,
+      }),
+    );
     sourceChecks.save.mockImplementation(async (value: unknown) => value);
     analyses.update.mockResolvedValue(undefined);
     sourceChecks.update.mockResolvedValue(undefined);
@@ -84,6 +87,7 @@ describe('SuppliersService', () => {
             confidence: 'verified',
             sanctionsHit: false,
             createdAt,
+            updatedAt: assessedAt,
           },
         ],
       },
@@ -103,6 +107,7 @@ describe('SuppliersService', () => {
           name: 'Nordwind Hydraulik GmbH',
           country: 'Germany',
           createdAt: '2026-10-10T12:00:00.000Z',
+          assessedAt: '2026-10-10T18:30:00.000Z',
           analysisStatus: 'completed',
           confidence: 'verified',
           sanctionsHit: false,
@@ -136,7 +141,11 @@ describe('SuppliersService', () => {
         source: 'opensanctions',
         status: 'pending',
       }),
-      expect.objectContaining({ analysisId, source: 'gleif', status: 'pending' }),
+      expect.objectContaining({
+        analysisId,
+        source: 'gleif',
+        status: 'pending',
+      }),
       expect.objectContaining({
         analysisId,
         source: 'wikidata',
@@ -153,6 +162,7 @@ describe('SuppliersService', () => {
       name: 'Nordwind Hydraulik GmbH',
       country: null,
       createdAt: '2026-10-10T12:00:00.000Z',
+      assessedAt: '2026-10-10T12:00:00.000Z',
       analysisStatus: 'queued',
       confidence: null,
       sanctionsHit: null,
@@ -196,6 +206,7 @@ describe('SuppliersService', () => {
       country: null,
       sanctionsHit: null,
       error: null,
+      updatedAt: expect.any(Date),
     });
     expect(sourceChecks.update).toHaveBeenCalledTimes(3);
     expect(events.publish).toHaveBeenCalledWith({
@@ -227,7 +238,7 @@ describe('SuppliersService', () => {
     expect(events.publish).not.toHaveBeenCalled();
   });
 
-  it("rejects a supplier that is not owned by the caller", async () => {
+  it('rejects a supplier that is not owned by the caller', async () => {
     suppliers.findOne.mockResolvedValue(null);
 
     await expect(service.get(userId, supplierId)).rejects.toBeInstanceOf(

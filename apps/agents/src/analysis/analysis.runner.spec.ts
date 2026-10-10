@@ -114,7 +114,9 @@ describe('AnalysisRunner', () => {
   });
 
   it('stores a Claude summary when the sources agree', async () => {
-    claude.summarize.mockResolvedValue('GLEIF and Wikidata both place Siemens in Germany.');
+    claude.summarize.mockResolvedValue(
+      'GLEIF and Wikidata both place Siemens in Germany.',
+    );
 
     await runner.run(supplierId);
 
@@ -122,7 +124,9 @@ describe('AnalysisRunner', () => {
     expect(claude.summarize).toHaveBeenCalledWith(
       expect.objectContaining({ supplierName: 'Siemens AG' }),
     );
-    expect(suppliers.update).toHaveBeenCalledWith(supplierId, { country: 'Germany' });
+    expect(suppliers.update).toHaveBeenCalledWith(supplierId, {
+      country: 'Germany',
+    });
     expect(analyses.update).toHaveBeenLastCalledWith(analysisId, {
       status: 'completed',
       confidence: 'verified',
@@ -131,6 +135,7 @@ describe('AnalysisRunner', () => {
       country: 'Germany',
       sanctionsHit: false,
       error: null,
+      updatedAt: expect.any(Date),
     });
     expect(redis.publish).toHaveBeenCalledWith({
       type: 'analysis.updated',
@@ -145,7 +150,9 @@ describe('AnalysisRunner', () => {
     await runner.run(supplierId);
 
     expect(checks.update).toHaveBeenCalledTimes(3);
-    expect(suppliers.update).toHaveBeenCalledWith(supplierId, { country: 'Germany' });
+    expect(suppliers.update).toHaveBeenCalledWith(supplierId, {
+      country: 'Germany',
+    });
     expect(analyses.update).toHaveBeenLastCalledWith(analysisId, {
       status: 'failed',
       confidence: 'verified',
@@ -154,6 +161,7 @@ describe('AnalysisRunner', () => {
       country: 'Germany',
       sanctionsHit: false,
       error: 'Claude unavailable',
+      updatedAt: expect.any(Date),
     });
   });
 });

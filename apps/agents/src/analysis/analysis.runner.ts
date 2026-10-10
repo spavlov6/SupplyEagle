@@ -57,7 +57,9 @@ export class AnalysisRunner {
       );
 
       if (assessment.confidence === 'verified' && assessment.country) {
-        await this.suppliers.update(supplier.id, { country: assessment.country });
+        await this.suppliers.update(supplier.id, {
+          country: assessment.country,
+        });
       }
 
       try {
@@ -74,10 +76,14 @@ export class AnalysisRunner {
           country: assessment.country,
           sanctionsHit: assessment.sanctionsHit,
           error: null,
+          updatedAt: new Date(),
         });
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Claude request failed';
-        this.logger.error(`Claude summary failed for ${supplierId}: ${message}`);
+        const message =
+          error instanceof Error ? error.message : 'Claude request failed';
+        this.logger.error(
+          `Claude summary failed for ${supplierId}: ${message}`,
+        );
         await this.analyses.update(analysis.id, {
           status: 'failed',
           confidence: assessment.confidence,
@@ -86,20 +92,30 @@ export class AnalysisRunner {
           country: assessment.country,
           sanctionsHit: assessment.sanctionsHit,
           error: message,
+          updatedAt: new Date(),
         });
       }
 
       await this.publish(analysis.userId, analysis.supplierId);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Analysis failed';
+      const message =
+        error instanceof Error ? error.message : 'Analysis failed';
       this.logger.error(`Analysis failed for ${supplierId}: ${message}`);
-      await this.analyses.update(analysis.id, { status: 'failed', error: message });
+      await this.analyses.update(analysis.id, {
+        status: 'failed',
+        error: message,
+        updatedAt: new Date(),
+      });
       await this.publish(analysis.userId, analysis.supplierId);
     }
   }
 
   private async markRunning(analysis: SupplierAnalysis): Promise<void> {
-    await this.analyses.update(analysis.id, { status: 'running', error: null });
+    await this.analyses.update(analysis.id, {
+      status: 'running',
+      error: null,
+      updatedAt: new Date(),
+    });
     await this.publish(analysis.userId, analysis.supplierId);
   }
 
@@ -107,7 +123,9 @@ export class AnalysisRunner {
     analysis: SupplierAnalysis,
     supplierName: string,
   ): Promise<CollectedSource[]> {
-    const checks = await this.checks.find({ where: { analysisId: analysis.id } });
+    const checks = await this.checks.find({
+      where: { analysisId: analysis.id },
+    });
     return Promise.all(
       checks.map(async (check) => {
         const fetched = await this.sources.fetch(check.source, supplierName);

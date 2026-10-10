@@ -182,6 +182,7 @@ export class SuppliersService {
       return created;
     }
 
+    const assessedAt = new Date();
     await this.analyses.update(current.id, {
       status: 'queued',
       confidence: null,
@@ -190,7 +191,9 @@ export class SuppliersService {
       country: null,
       sanctionsHit: null,
       error: null,
+      updatedAt: assessedAt,
     });
+    current.updatedAt = assessedAt;
     current.status = 'queued';
     current.confidence = null;
     current.summary = null;
@@ -223,7 +226,9 @@ export class SuppliersService {
     return current;
   }
 
-  private async pendingChecks(analysisId: string): Promise<SupplierSourceCheck[]> {
+  private async pendingChecks(
+    analysisId: string,
+  ): Promise<SupplierSourceCheck[]> {
     return this.sourceChecks.save(
       SUPPLIER_SOURCES.map((source) =>
         this.sourceChecks.create({
@@ -248,6 +253,7 @@ export class SuppliersService {
       name: row.name,
       country: row.country ?? null,
       createdAt: row.createdAt.toISOString(),
+      assessedAt: assessedAt(analysis),
       analysisStatus: analysis?.status ?? null,
       confidence: analysis?.confidence ?? null,
       sanctionsHit: analysis?.sanctionsHit ?? null,
@@ -291,6 +297,11 @@ export class SuppliersService {
       error: source.error,
     };
   }
+}
+
+function assessedAt(analysis: SupplierAnalysis | undefined): string | null {
+  const stamp = analysis?.updatedAt ?? analysis?.createdAt;
+  return stamp ? stamp.toISOString() : null;
 }
 
 function latestAnalysis(

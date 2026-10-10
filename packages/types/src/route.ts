@@ -82,6 +82,7 @@ export type RouteListItem = {
   destination: string;
   mode: ShippingMode;
   createdAt: string;
+  assessedAt: string | null;
   analysisStatus: AnalysisStatus | null;
   laneStatus: LaneStatus | null;
   riskState: RiskState | null;

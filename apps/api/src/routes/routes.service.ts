@@ -209,6 +209,7 @@ export class RoutesService {
       return created;
     }
 
+    const assessedAt = new Date();
     await this.assessments.update(current.id, {
       status: 'queued',
       riskState: null,
@@ -217,7 +218,9 @@ export class RoutesService {
       why: null,
       summary: null,
       error: null,
+      updatedAt: assessedAt,
     });
+    current.updatedAt = assessedAt;
     current.status = 'queued';
     current.riskState = null;
     current.laneStatus = null;
@@ -277,6 +280,7 @@ export class RoutesService {
       destination: row.destination,
       mode: row.mode,
       createdAt: row.createdAt.toISOString(),
+      assessedAt: assessedAt(assessment),
       analysisStatus: assessment?.status ?? null,
       laneStatus: assessment?.laneStatus ?? null,
       riskState: assessment?.riskState ?? null,
@@ -352,6 +356,11 @@ function linkedSuppliers(links: RouteSupplier[]): RouteLinkedSupplier[] {
       ];
     })
     .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function assessedAt(assessment: RouteAssessment | undefined): string | null {
+  const stamp = assessment?.updatedAt ?? assessment?.createdAt;
+  return stamp ? stamp.toISOString() : null;
 }
 
 function latestAssessment(

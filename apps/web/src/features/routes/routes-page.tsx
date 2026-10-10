@@ -7,6 +7,7 @@ import type {
   RouteListItem,
   ShippingMode,
 } from '@supplyeagle/types';
+import { formatAssessed } from '../format-assessed';
 import { AddRouteDialog } from './add-route-dialog';
 import { LaneTitle } from './lane-title';
 import { useRoutesQuery } from './use-routes';
@@ -61,19 +62,20 @@ export function RoutesPage() {
                 <th>Risk</th>
                 <th>Suppliers</th>
                 <th>Transit</th>
+                <th>Assessed</th>
               </tr>
             </thead>
             <tbody>
               {routesQuery.isPending ? (
                 <tr>
-                  <td colSpan={5} className="suppliers-empty">
+                  <td colSpan={6} className="suppliers-empty">
                     Loading lanes…
                   </td>
                 </tr>
               ) : null}
               {routesQuery.isError ? (
                 <tr>
-                  <td colSpan={5} className="suppliers-empty">
+                  <td colSpan={6} className="suppliers-empty">
                     <p className="status error">Could not load routes</p>
                     <p className="detail">Refresh the page, or try again.</p>
                     <button
@@ -87,7 +89,7 @@ export function RoutesPage() {
               ) : null}
               {routesQuery.data && routes.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="suppliers-empty">
+                  <td colSpan={6} className="suppliers-empty">
                     No lanes yet.
                   </td>
                 </tr>
@@ -158,6 +160,9 @@ function RouteRow({ route }: { route: RouteListItem }) {
         ) : (
           `${route.transitDays}d`
         )}
+      </td>
+      <td className="muted-cell">
+        {route.assessedAt ? formatAssessed(route.assessedAt) : <Empty />}
       </td>
     </tr>
   );
