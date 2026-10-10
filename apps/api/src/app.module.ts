@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module.js';
 import { HealthModule } from './health/health.module.js';
+import { RealtimeModule } from './realtime/realtime.module.js';
 import { SuppliersModule } from './suppliers/suppliers.module.js';
 
 @Module({
@@ -12,6 +13,7 @@ import { SuppliersModule } from './suppliers/suppliers.module.js';
     }),
     HealthModule,
     AuthModule,
+    RealtimeModule,
     SuppliersModule,
   ],
 })

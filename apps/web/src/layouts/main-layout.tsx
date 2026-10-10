@@ -1,10 +1,12 @@
 import { NavLink, Outlet } from 'react-router';
 import { Logo } from '../components/logo';
 import { useCurrentUserQuery, useSignOut } from '../features/auth/use-auth';
+import { useSupplierRealtime } from '../features/suppliers/use-supplier-realtime';
 
 export function MainLayout() {
   const currentUser = useCurrentUserQuery();
   const signOut = useSignOut();
+  useSupplierRealtime();
 
   return (
     <div className="app-shell">

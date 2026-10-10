@@ -1,8 +1,12 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Module } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
+import { AnalysisModule } from '../src/analysis/analysis.module.js';
 import { AppModule } from '../src/app.module.js';
+
+@Module({})
+class EmptyAnalysisModule {}
 
 describe('Health (e2e)', () => {
   let app: INestApplication<App>;
@@ -10,7 +14,10 @@ describe('Health (e2e)', () => {
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideModule(AnalysisModule)
+      .useModule(EmptyAnalysisModule)
+      .compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();

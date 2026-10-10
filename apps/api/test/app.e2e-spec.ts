@@ -4,9 +4,29 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
 import { AuthModule } from '../src/auth/auth.module.js';
+import { RealtimeModule } from '../src/realtime/realtime.module.js';
+import { RedisService } from '../src/realtime/redis.service.js';
+import { SuppliersModule } from '../src/suppliers/suppliers.module.js';
 
 @Module({})
 class EmptyAuthModule {}
+
+@Module({})
+class EmptySuppliersModule {}
+
+@Module({
+  providers: [
+    {
+      provide: RedisService,
+      useValue: {
+        publish: async () => undefined,
+        listen: async () => undefined,
+      },
+    },
+  ],
+  exports: [RedisService],
+})
+class FakeRealtimeModule {}
 
 describe('Health (e2e)', () => {
   let app: INestApplication<App>;
@@ -17,6 +37,10 @@ describe('Health (e2e)', () => {
     })
       .overrideModule(AuthModule)
       .useModule(EmptyAuthModule)
+      .overrideModule(SuppliersModule)
+      .useModule(EmptySuppliersModule)
+      .overrideModule(RealtimeModule)
+      .useModule(FakeRealtimeModule)
       .compile();
 
     app = moduleFixture.createNestApplication();

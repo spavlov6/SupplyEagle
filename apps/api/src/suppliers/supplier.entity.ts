@@ -5,10 +5,12 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../auth/user.entity.js';
+import type { SupplierAnalysis } from './supplier-analysis.entity.js';
 
 @Entity('suppliers')
 export class Supplier {
@@ -34,4 +36,7 @@ export class Supplier {
 
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
+
+  @OneToMany('SupplierAnalysis', 'supplier')
+  analyses?: SupplierAnalysis[];
 }

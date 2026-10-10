@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { Supplier } from '@supplyeagle/types';
+import { Link } from 'react-router';
+import type { AnalysisConfidence, Supplier } from '@supplyeagle/types';
 import { AddSupplierDialog } from './add-supplier-dialog';
 import { useSuppliersQuery } from './use-suppliers';
 
@@ -130,11 +131,7 @@ export function SuppliersPage() {
                 <tr>
                   <td colSpan={8} className="suppliers-empty">
                     <p className="status error">Could not load suppliers</p>
-                    <p className="detail">
-                      {suppliersQuery.error instanceof Error
-                        ? suppliersQuery.error.message
-                        : 'Unknown error'}
-                    </p>
+                    <p className="detail">Refresh the page, or try again.</p>
                     <button
                       type="button"
                       onClick={() => void suppliersQuery.refetch()}
@@ -208,13 +205,15 @@ function SupplierRow({ supplier, selected, onToggle }: SupplierRowProps) {
         />
       </td>
       <td>
-        <div className="supplier-name">{supplier.name}</div>
+        <div className="supplier-name">
+          <Link to={`/suppliers/${supplier.id}`}>{supplier.name}</Link>
+        </div>
         {supplier.country ? (
           <div className="supplier-place">{supplier.country}</div>
         ) : null}
       </td>
       <td>
-        <span className="risk-pill unassessed">Unassessed</span>
+        <RiskState supplier={supplier} />
       </td>
       <td className="muted-cell">—</td>
       <td className="muted-cell">—</td>
@@ -225,6 +224,55 @@ function SupplierRow({ supplier, selected, onToggle }: SupplierRowProps) {
       <td className="muted-cell">{formatAssessed(supplier.createdAt)}</td>
     </tr>
   );
+}
+
+function RiskState({ supplier }: { supplier: Supplier }) {
+  const view = riskView(supplier);
+  return <span className={`risk-pill ${view.tone}`}>{view.label}</span>;
+}
+
+function riskView(supplier: Supplier): { tone: string; label: string } {
+  if (supplier.sanctionsHit) {
+    return { tone: 'critical', label: 'Sanctions hit' };
+  }
+
+  switch (supplier.analysisStatus) {
+    case 'queued':
+      return { tone: 'watch', label: 'Queued' };
+    case 'running':
+      return { tone: 'watch', label: 'Analyzing' };
+    case 'failed':
+      return { tone: 'watch', label: 'Incomplete' };
+    case 'completed':
+      return confidenceView(supplier.confidence);
+    case null:
+      return { tone: 'unassessed', label: 'Unassessed' };
+    default: {
+      const unexpected: never = supplier.analysisStatus;
+      return unexpected;
+    }
+  }
+}
+
+function confidenceView(
+  confidence: AnalysisConfidence | null,
+): { tone: string; label: string } {
+  switch (confidence) {
+    case 'verified':
+      return { tone: 'stable', label: 'Verified' };
+    case 'partial':
+      return { tone: 'watch', label: 'Partial' };
+    case 'conflicting':
+      return { tone: 'elevated', label: 'Conflicting' };
+    case 'unverified':
+      return { tone: 'unassessed', label: 'Unverified' };
+    case null:
+      return { tone: 'unassessed', label: 'Unassessed' };
+    default: {
+      const unexpected: never = confidence;
+      return unexpected;
+    }
+  }
 }
 
 function TrendSparkline() {

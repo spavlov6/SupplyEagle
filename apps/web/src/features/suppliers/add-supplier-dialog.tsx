@@ -1,4 +1,5 @@
 import { useEffect, useId, useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router';
 import { useCreateSupplierMutation } from './use-suppliers';
 
 type AddSupplierDialogProps = {
@@ -8,6 +9,7 @@ type AddSupplierDialogProps = {
 export function AddSupplierDialog({ onClose }: AddSupplierDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
+  const navigate = useNavigate();
   const createSupplier = useCreateSupplierMutation();
   const [clientError, setClientError] = useState<string | null>(null);
 
@@ -35,7 +37,8 @@ export function AddSupplierDialog({ onClose }: AddSupplierDialogProps) {
     setClientError(null);
 
     try {
-      await createSupplier.mutateAsync({ name });
+      const created = await createSupplier.mutateAsync({ name });
+      navigate(`/suppliers/${created.id}`);
       onClose();
     } catch {
       // The mutation error is rendered below.
@@ -45,9 +48,7 @@ export function AddSupplierDialog({ onClose }: AddSupplierDialogProps) {
   const errorMessage = clientError
     ? clientError
     : createSupplier.isError
-      ? createSupplier.error instanceof Error
-        ? createSupplier.error.message
-        : 'Could not add supplier'
+      ? readableError(createSupplier.error, 'Could not add this supplier. Try again.')
       : null;
 
   return (
@@ -93,4 +94,22 @@ export function AddSupplierDialog({ onClose }: AddSupplierDialogProps) {
       </div>
     </div>
   );
+}
+
+function readableError(error: unknown, fallback: string): string {
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+
+  const message = error.message.trim();
+  if (
+    message.length === 0 ||
+    message.length > 160 ||
+    message.startsWith('{') ||
+    message.includes('request_id')
+  ) {
+    return fallback;
+  }
+
+  return message;
 }

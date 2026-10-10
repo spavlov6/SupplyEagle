@@ -10,5 +10,6 @@ export const queryKeys = {
   suppliers: {
     all: ['suppliers'] as const,
     list: () => [...queryKeys.suppliers.all, 'list'] as const,
+    detail: (id: string) => [...queryKeys.suppliers.all, 'detail', id] as const,
   },
 };
