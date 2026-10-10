@@ -20,8 +20,12 @@ export type {
   RouteCreatedEvent,
   RouteDetail,
   RouteDetailResponse,
+  RouteDisasterItem,
   RouteEvent,
+  RouteFinding,
   RouteLinkedSupplier,
+  RouteNewsItem,
+  RoutePlace,
   RouteListItem,
   RouteListResponse,
   RouteReassessEvent,
@@ -29,6 +33,8 @@ export type {
   RouteSourceCheck,
   RouteSourceFacts,
   RouteSourceName,
+  RouteSupplierItem,
+  RouteWeatherItem,
   ShippingMode,
 } from './route.js';
 export type {

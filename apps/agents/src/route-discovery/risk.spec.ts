@@ -44,37 +44,39 @@ describe('assessRouteRisk', () => {
     ).toEqual({
       name: 'Nordwind',
       level: 'watch',
-      why: 'propagated from → Nordwind',
+      why: 'Nordwind',
     });
 
     expect(
       assessRouteRisk({
         ...empty,
-        supplier: { level: 'watch', why: 'propagated from → Nordwind' },
+        supplier: { level: 'watch', why: 'Nordwind' },
       }),
     ).toEqual({
       laneStatus: 'active',
       riskState: 'watch',
-      why: 'propagated from → Nordwind',
+      why: 'Nordwind',
     });
 
     expect(
-      propagateSuppliers([{ name: 'Nordwind', sanctionsHit: true, confidence: 'verified' }]),
+      propagateSuppliers([
+        { name: 'Nordwind', sanctionsHit: true, confidence: 'verified' },
+      ]),
     ).toEqual({
       name: 'Nordwind',
       level: 'elevated',
-      why: 'propagated from → Nordwind',
+      why: 'Nordwind',
     });
 
     expect(
       assessRouteRisk({
         ...empty,
-        supplier: { level: 'elevated', why: 'propagated from → Nordwind' },
+        supplier: { level: 'elevated', why: 'Nordwind' },
       }),
     ).toEqual({
       laneStatus: 'active',
       riskState: 'elevated',
-      why: 'propagated from → Nordwind',
+      why: 'Nordwind',
     });
   });
 
@@ -89,7 +91,7 @@ describe('assessRouteRisk', () => {
   it('ignores a single manipulated provider', () => {
     const news = confirmedNews([
       {
-        provider: 'gdelt',
+        provider: 'google_news',
         place: 'origin',
         hazard: 'closure',
         domains: ['a.com', 'b.com', 'c.com', 'd.com', 'e.com'],
@@ -116,7 +118,7 @@ describe('assessRouteRisk', () => {
         news: [{ hazard: 'closure', why: 'Shanghai port closed' }],
         disasters: [],
         weather: [{ why: 'Severe wind at Shanghai', extreme: false }],
-        supplier: { level: 'elevated', why: 'propagated from → Nordwind' },
+        supplier: { level: 'elevated', why: 'Nordwind' },
       }),
     ).toEqual({
       laneStatus: 'disrupted',

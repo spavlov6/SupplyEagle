@@ -27,7 +27,6 @@ import { RouteSourceCheck } from './route-source-check.entity.js';
 import { RouteSupplier } from './route-supplier.entity.js';
 
 const ROUTE_SOURCES = [
-  'gdelt',
   'google_news',
   'reliefweb',
   'open_meteo',
@@ -70,7 +69,9 @@ export class RoutesService {
     });
 
     return {
-      routes: rows.map((row) => this.toListItem(row, latestAssessment(row.assessments))),
+      routes: rows.map((row) =>
+        this.toListItem(row, latestAssessment(row.assessments)),
+      ),
     };
   }
 
@@ -169,7 +170,10 @@ export class RoutesService {
   private async findOwned(userId: string, id: string): Promise<Route> {
     const row = await this.routes.findOne({
       where: { id, userId },
-      relations: { assessments: { sources: true }, links: { supplier: { analyses: true } } },
+      relations: {
+        assessments: { sources: true },
+        links: { supplier: { analyses: true } },
+      },
     });
     if (!row) {
       throw new NotFoundException('Route not found');
@@ -178,7 +182,10 @@ export class RoutesService {
     return row;
   }
 
-  private async queueAssessment(userId: string, row: Route): Promise<RouteAssessment> {
+  private async queueAssessment(
+    userId: string,
+    row: Route,
+  ): Promise<RouteAssessment> {
     const current = latestAssessment(row.assessments);
     if (current?.status === 'queued' || current?.status === 'running') {
       throw new ConflictException('This route is already being checked');
@@ -291,9 +298,11 @@ export class RoutesService {
   }
 
   private toAssessment(assessment: RouteAssessment): RouteAssessmentResponse {
-    const sources = [...(assessment.sources ?? [])].sort(
-      (left, right) => sourceOrder(left.source) - sourceOrder(right.source),
-    );
+    const sources = [...(assessment.sources ?? [])]
+      .filter((source) => isActiveSource(source.source))
+      .sort(
+        (left, right) => sourceOrder(left.source) - sourceOrder(right.source),
+      );
 
     return {
       id: assessment.id,
@@ -320,6 +329,7 @@ export class RoutesService {
       place: source.facts?.place ?? null,
       detail: source.facts?.detail ?? null,
       error: source.error,
+      items: source.facts?.items ?? [],
     };
   }
 }
@@ -368,9 +378,12 @@ function latestSupplierAnalysis(
   );
 }
 
+function isActiveSource(source: string): source is RouteSourceName {
+  return (ROUTE_SOURCES as readonly string[]).includes(source);
+}
+
 function categoryForSource(source: RouteSourceName): RouteSourceCategory {
   switch (source) {
-    case 'gdelt':
     case 'google_news':
     case 'reliefweb':
       return 'news';
@@ -392,8 +405,6 @@ function categoryForSource(source: RouteSourceName): RouteSourceCategory {
 
 function sourceOrder(source: RouteSourceName): number {
   switch (source) {
-    case 'gdelt':
-      return 0;
     case 'google_news':
       return 1;
     case 'reliefweb':

@@ -1,3 +1,4 @@
+import { summarizeDiscovery } from './finish.js';
 import { agreePlaces, haversineKm, transitDays } from './geo.js';
 import { assessRouteRisk } from './risk.js';
 import {
@@ -11,7 +12,9 @@ import {
   type WeatherReading,
 } from './signals.js';
 
-function news(overrides: Partial<NewsReport> & Pick<NewsReport, 'provider' | 'domains'>): NewsReport {
+function news(
+  overrides: Partial<NewsReport> & Pick<NewsReport, 'provider' | 'domains'>,
+): NewsReport {
   return {
     place: 'origin',
     hazard: 'closure',
@@ -22,7 +25,10 @@ function news(overrides: Partial<NewsReport> & Pick<NewsReport, 'provider' | 'do
 
 const placeNames = { origin: 'Shanghai', destination: 'Rotterdam' };
 
-function wind(provider: WeatherReading['provider'], windKmh: number): WeatherReading {
+function wind(
+  provider: WeatherReading['provider'],
+  windKmh: number,
+): WeatherReading {
   return {
     provider,
     place: 'origin',
@@ -60,7 +66,7 @@ describe('news agreement', () => {
     expect(
       confirmedNews([
         news({
-          provider: 'gdelt',
+          provider: 'google_news',
           domains: ['reuters.com', 'bbc.com', 'apnews.com', 'aljazeera.com'],
           headline: 'Fabricated closure',
         }),
@@ -72,12 +78,12 @@ describe('news agreement', () => {
     expect(
       confirmedNews([
         news({
-          provider: 'gdelt',
+          provider: 'google_news',
           domains: ['reuters.com', 'bbc.com'],
           headline: 'Shanghai port closed',
         }),
         news({
-          provider: 'google_news',
+          provider: 'reliefweb',
           domains: ['apnews.com'],
           headline: 'Closure continues',
         }),
@@ -87,7 +93,7 @@ describe('news agreement', () => {
         place: 'origin',
         hazard: 'closure',
         headline: 'Shanghai port closed',
-        providers: ['gdelt', 'google_news'],
+        providers: ['google_news', 'reliefweb'],
         domains: ['reuters.com', 'bbc.com', 'apnews.com'],
       },
     ]);
@@ -96,14 +102,14 @@ describe('news agreement', () => {
   it('stays unverified with one or two publisher domains', () => {
     expect(
       confirmedNews([
-        news({ provider: 'gdelt', domains: ['reuters.com'] }),
         news({ provider: 'google_news', domains: ['reuters.com'] }),
+        news({ provider: 'reliefweb', domains: ['reuters.com'] }),
       ]),
     ).toEqual([]);
 
     expect(
       confirmedNews([
-        news({ provider: 'gdelt', domains: ['reuters.com'] }),
+        news({ provider: 'google_news', domains: ['reuters.com'] }),
         news({ provider: 'reliefweb', domains: ['bbc.com'] }),
       ]),
     ).toEqual([]);
@@ -112,16 +118,28 @@ describe('news agreement', () => {
   it('does not pool different hazards or places', () => {
     expect(
       confirmedNews([
-        news({ provider: 'gdelt', hazard: 'closure', domains: ['a.com', 'b.com', 'c.com'] }),
-        news({ provider: 'google_news', hazard: 'strike', domains: ['d.com', 'e.com', 'f.com'] }),
+        news({
+          provider: 'google_news',
+          hazard: 'closure',
+          domains: ['a.com', 'b.com', 'c.com'],
+        }),
+        news({
+          provider: 'reliefweb',
+          hazard: 'strike',
+          domains: ['d.com', 'e.com', 'f.com'],
+        }),
       ]),
     ).toEqual([]);
 
     expect(
       confirmedNews([
-        news({ provider: 'gdelt', place: 'origin', domains: ['a.com', 'b.com'] }),
         news({
           provider: 'google_news',
+          place: 'origin',
+          domains: ['a.com', 'b.com'],
+        }),
+        news({
+          provider: 'reliefweb',
           place: 'destination',
           domains: ['c.com'],
         }),
@@ -132,7 +150,10 @@ describe('news agreement', () => {
 
 describe('weather agreement', () => {
   it('does not raise risk from one provider over the threshold', () => {
-    const weather = confirmWeather([wind('open_meteo', EXTREME_WIND_KMH + 20)], placeNames);
+    const weather = confirmWeather(
+      [wind('open_meteo', EXTREME_WIND_KMH + 20)],
+      placeNames,
+    );
 
     expect(weather).toEqual([]);
     expect(
@@ -142,7 +163,10 @@ describe('weather agreement', () => {
 
   it('raises risk when both weather providers cross the same threshold', () => {
     const weather = confirmWeather(
-      [wind('open_meteo', STORM_WIND_KMH), wind('met_norway', STORM_WIND_KMH + 4)],
+      [
+        wind('open_meteo', STORM_WIND_KMH),
+        wind('met_norway', STORM_WIND_KMH + 4),
+      ],
       placeNames,
     );
 
@@ -158,10 +182,17 @@ describe('weather agreement', () => {
       assessRouteRisk({
         news: [],
         disasters: [],
-        weather: weather.map((item) => ({ why: item.why, extreme: item.extreme })),
+        weather: weather.map((item) => ({
+          why: item.why,
+          extreme: item.extreme,
+        })),
         supplier: null,
       }),
-    ).toMatchObject({ laneStatus: 'active', riskState: 'watch', why: 'Severe wind at Shanghai' });
+    ).toMatchObject({
+      laneStatus: 'active',
+      riskState: 'watch',
+      why: 'Severe wind at Shanghai',
+    });
   });
 
   it('does not treat different weather codes as agreement', () => {
@@ -190,7 +221,10 @@ describe('weather agreement', () => {
 
   it('marks weather elevated only when both providers are extreme', () => {
     const weather = confirmWeather(
-      [wind('open_meteo', EXTREME_WIND_KMH), wind('met_norway', EXTREME_WIND_KMH + 5)],
+      [
+        wind('open_meteo', EXTREME_WIND_KMH),
+        wind('met_norway', EXTREME_WIND_KMH + 5),
+      ],
       placeNames,
     );
 
@@ -199,7 +233,10 @@ describe('weather agreement', () => {
       assessRouteRisk({
         news: [],
         disasters: [],
-        weather: weather.map((item) => ({ why: item.why, extreme: item.extreme })),
+        weather: weather.map((item) => ({
+          why: item.why,
+          extreme: item.extreme,
+        })),
         supplier: null,
       }).riskState,
     ).toBe('elevated');
@@ -264,6 +301,78 @@ describe('disaster agreement', () => {
       riskState: 'critical',
       why: 'M6.2 near Rotterdam',
     });
+  });
+
+  it('marks a finished empty check clear and a failed check unverified', () => {
+    const finished = summarizeDiscovery({
+      news: [],
+      weather: [
+        {
+          provider: 'open_meteo',
+          place: 'origin',
+          windKmh: 5,
+          waveHeightM: null,
+          visibilityM: 10_000,
+        },
+        {
+          provider: 'met_norway',
+          place: 'origin',
+          windKmh: 7,
+          waveHeightM: null,
+          visibilityM: null,
+        },
+      ],
+      disasters: [],
+      suppliers: [],
+      placeNames,
+      errors: { reliefweb: 'HTTP 410' },
+    });
+
+    expect(finished.checks.google_news.facts.agreement).toBe('clear');
+    expect(finished.checks.open_meteo.facts.agreement).toBe('clear');
+    expect(finished.checks.met_norway.facts.agreement).toBe('clear');
+    expect(finished.checks.gdacs.facts.agreement).toBe('clear');
+    expect(finished.checks.reliefweb.facts.agreement).toBe('unverified');
+    expect(finished.checks.supplier_propagation.facts.agreement).toBe('clear');
+    expect(finished.checks.open_meteo.facts.items).toEqual([
+      {
+        kind: 'weather',
+        place: 'origin',
+        windKmh: 5,
+        waveHeightM: null,
+        visibilityM: 10_000,
+      },
+    ]);
+    expect(finished.checks.google_news.facts.items).toEqual([]);
+  });
+
+  it('leaves a single news provider unverified', () => {
+    const finished = summarizeDiscovery({
+      news: [
+        {
+          provider: 'google_news',
+          place: 'origin',
+          hazard: 'closure',
+          domains: ['reuters.com'],
+          headline: 'Beijing airport closed',
+          url: null,
+        },
+      ],
+      weather: [],
+      disasters: [],
+      suppliers: [
+        { name: 'Rheinmetall', sanctionsHit: true, confidence: 'verified' },
+      ],
+      placeNames,
+      errors: {},
+    });
+
+    expect(finished.checks.google_news.facts.agreement).toBe('unverified');
+    expect(finished.checks.reliefweb.facts.agreement).toBe('clear');
+    expect(finished.checks.supplier_propagation.facts.agreement).toBe(
+      'confirmed',
+    );
+    expect(finished.decision.riskState).toBe('elevated');
   });
 
   it('does not match different hazard classes', () => {

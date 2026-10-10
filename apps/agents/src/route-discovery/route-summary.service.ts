@@ -24,13 +24,17 @@ export class RouteSummaryService {
 
     const client = new Anthropic({ apiKey });
     const message = await client.messages.create({
-      model: this.config.get<string>('AGENTS_CLAUDE_MODEL') ?? 'claude-sonnet-5-5',
+      model:
+        this.config.get<string>('AGENTS_CLAUDE_MODEL') ?? 'claude-sonnet-5-5',
       max_tokens: 700,
       system: [
         'You write a short lane assessment summary for a supply-chain analyst.',
         'Use only the structured findings in the user message.',
         'The risk decision is already final. Do not change it or invent events, providers, or places.',
-        'Say which providers agreed and which stayed unverified.',
+        'confirmed means that provider corroborated a hazard.',
+        'clear means that provider finished its check and found no hazard.',
+        'unverified means the check failed or a report was not corroborated by another provider.',
+        'Say which providers confirmed a hazard, which checked clear, and which stayed unverified.',
         'Respond with JSON only: {"summary":"..."}',
       ].join(' '),
       messages: [

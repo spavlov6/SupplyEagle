@@ -2,9 +2,10 @@ import type { AnalysisConfidence } from '@supplyeagle/types';
 
 export type LaneEnd = 'origin' | 'destination';
 
-export type NewsProvider = 'gdelt' | 'google_news' | 'reliefweb';
+export type NewsProvider = 'google_news' | 'reliefweb';
 
-export type NewsHazard = 'closure' | 'strike' | 'congestion' | 'storm' | 'conflict';
+export type NewsHazard =
+  'closure' | 'strike' | 'congestion' | 'storm' | 'conflict';
 
 export type NewsReport = {
   provider: NewsProvider;
@@ -95,11 +96,18 @@ export function confirmedNews(reports: NewsReport[]): ConfirmedNews[] {
   for (const group of groups.values()) {
     const providers = unique(group.map((report) => report.provider));
     const domains = unique(
-      group.flatMap((report) => report.domains.map((domain) => normalizeDomain(domain))),
+      group.flatMap((report) =>
+        report.domains.map((domain) => normalizeDomain(domain)),
+      ),
     ).filter((domain) => domain.length > 0);
-    const headline = group.find((report) => report.headline.trim().length > 0)?.headline ?? '';
+    const headline =
+      group.find((report) => report.headline.trim().length > 0)?.headline ?? '';
     const sample = group[0];
-    if (!sample || providers.length < NEWS_PROVIDERS || domains.length < NEWS_DOMAINS) {
+    if (
+      !sample ||
+      providers.length < NEWS_PROVIDERS ||
+      domains.length < NEWS_DOMAINS
+    ) {
       continue;
     }
 
@@ -113,6 +121,11 @@ export function confirmedNews(reports: NewsReport[]): ConfirmedNews[] {
   }
 
   return confirmed;
+}
+
+export function hazardousReading(reading: WeatherReading): boolean {
+  const codes: WeatherCode[] = ['wind', 'wave', 'visibility'];
+  return codes.some((code) => crossed(reading, code).crossed);
 }
 
 export function confirmWeather(
@@ -155,7 +168,9 @@ export function confirmWeather(
   return confirmed;
 }
 
-export function confirmDisasters(reports: DisasterReport[]): ConfirmedDisaster[] {
+export function confirmDisasters(
+  reports: DisasterReport[],
+): ConfirmedDisaster[] {
   const groups = new Map<string, DisasterReport[]>();
   for (const report of reports) {
     const hazardClass = canonicalHazardClass(report.hazardClass);
@@ -180,7 +195,8 @@ export function confirmDisasters(reports: DisasterReport[]): ConfirmedDisaster[]
     confirmed.push({
       place: sample.place,
       hazardClass: sample.hazardClass,
-      headline: sample.headline.trim() || `${sample.hazardClass} at ${sample.place}`,
+      headline:
+        sample.headline.trim() || `${sample.hazardClass} at ${sample.place}`,
       providers,
     });
   }
@@ -188,7 +204,9 @@ export function confirmDisasters(reports: DisasterReport[]): ConfirmedDisaster[]
   return confirmed;
 }
 
-export function propagateSuppliers(inputs: SupplierFlagInput[]): SupplierPropagation | null {
+export function propagateSuppliers(
+  inputs: SupplierFlagInput[],
+): SupplierPropagation | null {
   let best: SupplierPropagation | null = null;
   for (const input of inputs) {
     const level = supplierLevel(input);
@@ -200,7 +218,7 @@ export function propagateSuppliers(inputs: SupplierFlagInput[]): SupplierPropaga
       best = {
         name: input.name,
         level,
-        why: `propagated from → ${input.name}`,
+        why: input.name,
       };
     }
   }
@@ -251,7 +269,11 @@ export function canonicalHazardClass(value: string): string {
   if (text.includes('earthquake')) {
     return 'earthquake';
   }
-  if (text.includes('cyclone') || text.includes('hurricane') || text.includes('typhoon')) {
+  if (
+    text.includes('cyclone') ||
+    text.includes('hurricane') ||
+    text.includes('typhoon')
+  ) {
     return 'cyclone';
   }
   if (text.includes('flood')) {
@@ -286,7 +308,11 @@ export function normalizeDomain(value: string): string {
 
   const host = hostOf(trimmed);
   const bare = host.replace(/^www\./, '');
-  if (bare === 'news.google.com' || bare.endsWith('.news.google.com') || bare === 'google.com') {
+  if (
+    bare === 'news.google.com' ||
+    bare.endsWith('.news.google.com') ||
+    bare === 'google.com'
+  ) {
     return '';
   }
 
@@ -335,7 +361,11 @@ function crossed(
     case 'wave':
       return threshold(reading.waveHeightM, HIGH_WAVE_M, EXTREME_WAVE_M);
     case 'visibility':
-      return lowerThreshold(reading.visibilityM, POOR_VISIBILITY_M, EXTREME_VISIBILITY_M);
+      return lowerThreshold(
+        reading.visibilityM,
+        POOR_VISIBILITY_M,
+        EXTREME_VISIBILITY_M,
+      );
     default: {
       const unexpected: never = code;
       return unexpected;
@@ -367,7 +397,11 @@ function lowerThreshold(
   return { crossed: true, extreme: value <= extreme };
 }
 
-function weatherWhy(code: WeatherCode, extreme: boolean, placeName: string): string {
+function weatherWhy(
+  code: WeatherCode,
+  extreme: boolean,
+  placeName: string,
+): string {
   const level = extreme ? 'Extreme' : 'Severe';
   switch (code) {
     case 'wind':

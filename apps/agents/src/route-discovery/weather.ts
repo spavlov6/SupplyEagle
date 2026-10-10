@@ -24,21 +24,32 @@ async function fetchPair(
   mode: ShippingMode,
   origin: LocatedPlace,
   destination: LocatedPlace,
-  read: (mode: ShippingMode, place: LaneEnd, point: LocatedPlace) => Promise<WeatherReading>,
+  read: (
+    mode: ShippingMode,
+    place: LaneEnd,
+    point: LocatedPlace,
+  ) => Promise<WeatherReading>,
 ): Promise<{ readings: WeatherReading[]; error: string | null }> {
   const ends: Array<{ end: LaneEnd; point: LocatedPlace }> = [
     { end: 'origin', point: origin },
     { end: 'destination', point: destination },
   ];
-  const readings: WeatherReading[] = [];
-  const errors: string[] = [];
-  for (const end of ends) {
-    try {
-      readings.push(await read(mode, end.end, end.point));
-    } catch (error) {
-      errors.push(errorMessage(error, `${provider} request failed`));
-    }
-  }
+  const settled = await Promise.all(
+    ends.map(async (end) => {
+      try {
+        return { reading: await read(mode, end.end, end.point), error: null };
+      } catch (error) {
+        return {
+          reading: null,
+          error: errorMessage(error, `${provider} request failed`),
+        };
+      }
+    }),
+  );
+  const readings = settled.flatMap((item) =>
+    item.reading ? [item.reading] : [],
+  );
+  const errors = settled.flatMap((item) => (item.error ? [item.error] : []));
 
   if (readings.length === 0) {
     return { readings: [], error: errors[0] ?? `${provider} request failed` };
@@ -59,7 +70,8 @@ async function readOpenMeteo(
   forecastUrl.searchParams.set('wind_speed_unit', 'kmh');
   forecastUrl.searchParams.set('timezone', 'UTC');
   const forecast = await requestJson(forecastUrl.toString());
-  const current = isRecord(forecast) && isRecord(forecast.current) ? forecast.current : null;
+  const current =
+    isRecord(forecast) && isRecord(forecast.current) ? forecast.current : null;
   let waveHeightM: number | null = null;
   if (mode === 'sea') {
     waveHeightM = await openMeteoWaves(point);
@@ -97,7 +109,9 @@ async function readMetNorway(
   place: LaneEnd,
   point: LocatedPlace,
 ): Promise<WeatherReading> {
-  const url = new URL('https://api.met.no/weatherapi/locationforecast/2.0/compact');
+  const url = new URL(
+    'https://api.met.no/weatherapi/locationforecast/2.0/compact',
+  );
   url.searchParams.set('lat', point.lat.toFixed(4));
   url.searchParams.set('lon', point.lon.toFixed(4));
   const body = await requestJson(url.toString());
@@ -112,13 +126,16 @@ async function readMetNorway(
     provider: 'met_norway',
     place,
     windKmh: windMs === null ? null : windMs * 3.6,
-    visibilityM: asNumber(details?.visibility) ?? asNumber(details?.visibility_in_air),
+    visibilityM:
+      asNumber(details?.visibility) ?? asNumber(details?.visibility_in_air),
     waveHeightM,
   };
 }
 
 async function metNorwayWaves(point: LocatedPlace): Promise<number | null> {
-  const url = new URL('https://api.met.no/weatherapi/oceanforecast/2.0/complete');
+  const url = new URL(
+    'https://api.met.no/weatherapi/oceanforecast/2.0/complete',
+  );
   url.searchParams.set('lat', point.lat.toFixed(4));
   url.searchParams.set('lon', point.lon.toFixed(4));
   try {
@@ -130,14 +147,24 @@ async function metNorwayWaves(point: LocatedPlace): Promise<number | null> {
 }
 
 function firstDetails(body: unknown): Record<string, unknown> | null {
-  if (!isRecord(body) || !isRecord(body.properties) || !Array.isArray(body.properties.timeseries)) {
+  if (
+    !isRecord(body) ||
+    !isRecord(body.properties) ||
+    !Array.isArray(body.properties.timeseries)
+  ) {
     return null;
   }
 
   const first = body.properties.timeseries[0];
-  if (!isRecord(first) || !isRecord(first.data) || !isRecord(first.data.instant)) {
+  if (
+    !isRecord(first) ||
+    !isRecord(first.data) ||
+    !isRecord(first.data.instant)
+  ) {
     return null;
   }
 
-  return isRecord(first.data.instant.details) ? first.data.instant.details : null;
+  return isRecord(first.data.instant.details)
+    ? first.data.instant.details
+    : null;
 }

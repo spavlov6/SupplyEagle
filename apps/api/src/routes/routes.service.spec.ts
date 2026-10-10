@@ -55,12 +55,14 @@ describe('RoutesService', () => {
       links: [],
       ...value,
     }));
-    assessments.save.mockImplementation(async (value: Partial<RouteAssessment>) => ({
-      id: analysisId,
-      createdAt,
-      updatedAt: createdAt,
-      ...value,
-    }));
+    assessments.save.mockImplementation(
+      async (value: Partial<RouteAssessment>) => ({
+        id: analysisId,
+        createdAt,
+        updatedAt: createdAt,
+        ...value,
+      }),
+    );
     links.save.mockImplementation(async (value: unknown) => value);
     sourceChecks.save.mockImplementation(async (value: unknown) => value);
     events.publish.mockResolvedValue(undefined);
@@ -71,7 +73,10 @@ describe('RoutesService', () => {
         { provide: getRepositoryToken(Route), useValue: routes },
         { provide: getRepositoryToken(RouteSupplier), useValue: links },
         { provide: getRepositoryToken(RouteAssessment), useValue: assessments },
-        { provide: getRepositoryToken(RouteSourceCheck), useValue: sourceChecks },
+        {
+          provide: getRepositoryToken(RouteSourceCheck),
+          useValue: sourceChecks,
+        },
         { provide: getRepositoryToken(Supplier), useValue: suppliers },
         { provide: RouteRedisService, useValue: events },
       ],
@@ -81,7 +86,9 @@ describe('RoutesService', () => {
   });
 
   it('creates a queued assessment and publishes route.created', async () => {
-    suppliers.find.mockResolvedValue([{ id: supplierId, userId, name: 'Nordwind' }]);
+    suppliers.find.mockResolvedValue([
+      { id: supplierId, userId, name: 'Nordwind' },
+    ]);
 
     const result = await service.create(userId, {
       origin: 'Shanghai',
@@ -116,8 +123,16 @@ describe('RoutesService', () => {
     );
     expect(sourceChecks.save).toHaveBeenCalledWith(
       expect.arrayContaining([
-        expect.objectContaining({ analysisId, source: 'gdelt', status: 'pending' }),
-        expect.objectContaining({ analysisId, source: 'met_norway', status: 'pending' }),
+        expect.objectContaining({
+          analysisId,
+          source: 'google_news',
+          status: 'pending',
+        }),
+        expect.objectContaining({
+          analysisId,
+          source: 'met_norway',
+          status: 'pending',
+        }),
         expect.objectContaining({
           analysisId,
           source: 'supplier_propagation',
@@ -146,7 +161,9 @@ describe('RoutesService', () => {
   });
 
   it("rejects a supplier id that is not the current user's", async () => {
-    suppliers.find.mockResolvedValue([{ id: supplierId, userId, name: 'Nordwind' }]);
+    suppliers.find.mockResolvedValue([
+      { id: supplierId, userId, name: 'Nordwind' },
+    ]);
 
     await expect(
       service.create(userId, {

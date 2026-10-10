@@ -1,7 +1,6 @@
 import type { RouteSourceCategory, RouteSourceName } from '@supplyeagle/types';
 
 export const ROUTE_SOURCES = [
-  'gdelt',
   'google_news',
   'reliefweb',
   'open_meteo',
@@ -18,9 +17,10 @@ type SourcesComplete = [MissingSource] extends [never] ? true : never;
 const sourcesComplete: SourcesComplete = true;
 void sourcesComplete;
 
-export function categoryForSource(source: RouteSourceName): RouteSourceCategory {
+export function categoryForSource(
+  source: RouteSourceName,
+): RouteSourceCategory {
   switch (source) {
-    case 'gdelt':
     case 'google_news':
     case 'reliefweb':
       return 'news';

@@ -5,8 +5,11 @@ import type {
   SupplierAnalysis,
   SupplierSourceCheck,
 } from '@supplyeagle/types';
+import { useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router';
 import { ApiError } from '../../lib/api-client';
+import { RiskScoreCard } from '../risk/risk-score-card';
+import { scoreSupplier } from '../risk/score';
 import { useReassessSupplierMutation, useSupplierQuery } from './use-suppliers';
 
 export function SupplierDetailsPage() {
@@ -20,12 +23,10 @@ export function SupplierDetailsPage() {
       </Link>
 
       {supplierQuery.isPending ? (
-        <header className="suppliers-heading">
-          <div>
-            <h1>Supplier</h1>
-            <p className="suppliers-subtitle">Loading supplier…</p>
-          </div>
-        </header>
+        <section className="card loading-panel" aria-live="polite">
+          <span className="spinner spinner-lg" aria-hidden="true" />
+          <p>Loading supplier…</p>
+        </section>
       ) : null}
 
       {supplierQuery.isError ? (
@@ -49,7 +50,9 @@ function SupplierLoadError({ error }: { error: unknown }) {
 
   return (
     <section className="card" aria-live="polite">
-      <h1>{notFound ? 'Supplier not found' : 'Could not load this supplier'}</h1>
+      <h1>
+        {notFound ? 'Supplier not found' : 'Could not load this supplier'}
+      </h1>
       <p className="detail">
         {notFound
           ? 'It may have been removed, or it belongs to another account.'
@@ -78,6 +81,14 @@ function SupplierDetail({
   const reassessError = reassess.isError
     ? 'Reassess did not start. Try again in a moment.'
     : null;
+  const resetting =
+    reassess.isPending &&
+    analysis?.status !== 'queued' &&
+    analysis?.status !== 'running';
+  const sources = visibleSources(orderedSources(analysis), resetting);
+  const checked = sources.filter(
+    (source) => source.status !== 'pending',
+  ).length;
 
   return (
     <>
@@ -85,8 +96,13 @@ function SupplierDetail({
         <div>
           <h1>{name}</h1>
           <p className="suppliers-subtitle">
-            {country ?? 'Country not verified yet'}
+            {displayCountry(country, analysis) ?? 'Country not verified yet'}
           </p>
+          <CompanyMeta
+            country={displayCountry(country, analysis)}
+            analysis={analysis}
+            checking={inProgress}
+          />
         </div>
         <div className="suppliers-heading-actions detail-actions">
           <button
@@ -97,33 +113,116 @@ function SupplierDetail({
             {inProgress ? 'Reassessing…' : 'Reassess'}
           </button>
           <div className="detail-pills">
-            <StatusPill status={analysis?.status ?? null} />
-            <ConfidencePill confidence={analysis?.confidence ?? null} />
-            <SanctionsPill sanctionsHit={analysis?.sanctionsHit ?? null} />
+            <StatusPill
+              status={analysis?.status ?? null}
+              assessing={inProgress}
+            />
+            <ConfidencePill
+              confidence={inProgress ? null : (analysis?.confidence ?? null)}
+              assessing={inProgress}
+            />
+            <SanctionsPill
+              sanctionsHit={
+                inProgress ? null : (analysis?.sanctionsHit ?? null)
+              }
+              assessing={inProgress}
+            />
           </div>
           {reassessError ? <p className="form-error">{reassessError}</p> : null}
         </div>
       </header>
 
-      <VerificationBrief analysis={analysis} />
-      <CompanyProfile analysis={analysis} />
-
-      <section className="source-section" aria-label="Verification sources">
-        <h2>Sources</h2>
-        <ul className="source-list">
-          {orderedSources(analysis).map((source) => (
-            <SourceRow key={source.source} source={source} />
-          ))}
-        </ul>
-      </section>
+      <RiskScoreCard
+        kind="supplier"
+        result={
+          inProgress || !analysis
+            ? null
+            : scoreSupplier({
+                confidence: analysis.confidence,
+                sanctionsHit: analysis.sanctionsHit,
+                sources: analysis.sources,
+              })
+        }
+      />
+      <VerificationBrief
+        analysis={inProgress ? null : analysis}
+        checking={inProgress}
+        checked={checked}
+        total={sources.length}
+      />
+      <SupplierSources
+        sources={sources}
+        checking={inProgress}
+        checked={checked}
+      />
     </>
   );
 }
 
-function VerificationBrief({ analysis }: { analysis: SupplierAnalysis | null }) {
+function SupplierSources({
+  sources,
+  checking,
+  checked,
+}: {
+  sources: SupplierSourceCheck[];
+  checking: boolean;
+  checked: number;
+}) {
+  const details = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    if (details.current) {
+      details.current.open = checking;
+    }
+  }, [checking]);
+
+  return (
+    <section className="source-section" aria-label="Verification sources">
+      {checking ? (
+        <CheckProgress checked={checked} total={sources.length} />
+      ) : null}
+      <details ref={details} className="source-group">
+        <summary className="source-group-title source-section-toggle">
+          <h2>Sources</h2>
+          <span className="source-group-meta">
+            {checked} of {sources.length}
+            <span className="source-chevron" aria-hidden="true" />
+          </span>
+        </summary>
+        <ul className="source-list">
+          {sources.map((source) => (
+            <SourceRow
+              key={source.source}
+              source={source}
+              checking={checking}
+            />
+          ))}
+        </ul>
+      </details>
+    </section>
+  );
+}
+
+function VerificationBrief({
+  analysis,
+  checking,
+  checked,
+  total,
+}: {
+  analysis: SupplierAnalysis | null;
+  checking: boolean;
+  checked: number;
+  total: number;
+}) {
   return (
     <section className="card brief-card" aria-live="polite">
       <h2>Verification</h2>
+      {checking ? (
+        <p className="profile-decision check-status">
+          <span className="spinner" aria-hidden="true" />
+          Checking {checked} of {total} sources
+        </p>
+      ) : null}
       {analysis ? (
         <ul className="brief-list">
           {verificationItems(analysis).map((item) => (
@@ -134,7 +233,12 @@ function VerificationBrief({ analysis }: { analysis: SupplierAnalysis | null }) 
                 {item.href ? (
                   <>
                     {' '}
-                    <a className="text-link" href={item.href} target="_blank" rel="noreferrer">
+                    <a
+                      className="text-link"
+                      href={item.href}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                       {item.hrefLabel}
                     </a>
                   </>
@@ -143,43 +247,58 @@ function VerificationBrief({ analysis }: { analysis: SupplierAnalysis | null }) 
             </li>
           ))}
         </ul>
-      ) : (
+      ) : checking ? null : (
         <p className="profile-decision">Verification has not started.</p>
       )}
     </section>
   );
 }
 
-function CompanyProfile({ analysis }: { analysis: SupplierAnalysis | null }) {
+function CompanyMeta({
+  country,
+  analysis,
+  checking,
+}: {
+  country: string | null;
+  analysis: SupplierAnalysis | null;
+  checking: boolean;
+}) {
   const facts = companyFacts(analysis);
+  const summary = companySummary(facts.description, country);
   const rows = factRows(facts);
 
   return (
-    <section className="card profile-card" aria-live="polite">
-      <div className="profile-heading">
-        <h2>Company</h2>
+    <div className="company-meta-wrap" aria-live="polite">
+      {summary ? <p className="company-summary">{summary}</p> : null}
+      <dl className="company-meta">
         {facts.entityStatus ? (
-          <span className={`risk-pill ${facts.entityStatus === 'ACTIVE' ? 'stable' : 'watch'}`}>
-            {registryStatusLabel(facts.entityStatus)}
-          </span>
+          <div>
+            <dt>Registry</dt>
+            <dd>
+              <span
+                className={`risk-pill ${facts.entityStatus === 'ACTIVE' ? 'stable' : 'watch'}`}
+              >
+                {registryStatusLabel(facts.entityStatus)}
+              </span>
+            </dd>
+          </div>
         ) : null}
-      </div>
-      {facts.description ? <p className="profile-description">{facts.description}</p> : null}
-      {rows.length > 0 ? (
-        <dl className="profile-grid">
-          {rows.map((row) => (
-            <div key={row.label}>
-              <dt>{row.label}</dt>
-              <dd>
-                <FactValue row={row} />
-              </dd>
-            </div>
-          ))}
-        </dl>
-      ) : (
-        <p className="detail profile-empty">Company details appear as the sources finish.</p>
-      )}
-    </section>
+        {rows.map((row) => (
+          <div key={row.label}>
+            <dt>{row.label}</dt>
+            <dd>
+              {row.value ? (
+                <FactValue row={{ ...row, value: row.value }} />
+              ) : (
+                <span className="profile-missing">
+                  {checking ? 'Checking' : 'Not on file'}
+                </span>
+              )}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
 
@@ -233,7 +352,9 @@ function verifiedText(
   gleif: SupplierSourceCheck,
   wikidata: SupplierSourceCheck,
 ): string {
-  const place = countryPhrase(analysis.country ?? gleif.country ?? wikidata.country);
+  const place = countryPhrase(
+    analysis.country ?? gleif.country ?? wikidata.country,
+  );
   const gleifName = gleif.label ?? 'the company';
   const wikidataName = wikidata.label ?? 'the company';
   if (gleifName.toLowerCase() === wikidataName.toLowerCase()) {
@@ -248,7 +369,12 @@ function partialText(
   gleif: SupplierSourceCheck,
   wikidata: SupplierSourceCheck,
 ): string {
-  const matched = gleif.status === 'found' ? gleif : wikidata.status === 'found' ? wikidata : null;
+  const matched =
+    gleif.status === 'found'
+      ? gleif
+      : wikidata.status === 'found'
+        ? wikidata
+        : null;
   if (!matched) {
     return 'Only one identity source matched.';
   }
@@ -259,11 +385,17 @@ function partialText(
   return `${sourceTitle(matched.source)} matched ${matched.label ?? 'this company'}${place}. ${gap}`;
 }
 
-function conflictingText(gleif: SupplierSourceCheck, wikidata: SupplierSourceCheck): string {
+function conflictingText(
+  gleif: SupplierSourceCheck,
+  wikidata: SupplierSourceCheck,
+): string {
   return `${matchedPlace(gleif)} ${matchedPlace(wikidata)}`.trim();
 }
 
-function unverifiedText(gleif: SupplierSourceCheck, wikidata: SupplierSourceCheck): string {
+function unverifiedText(
+  gleif: SupplierSourceCheck,
+  wikidata: SupplierSourceCheck,
+): string {
   if (gleif.status === 'not_found' && wikidata.status === 'not_found') {
     return 'GLEIF and Wikidata found no matching record.';
   }
@@ -271,7 +403,10 @@ function unverifiedText(gleif: SupplierSourceCheck, wikidata: SupplierSourceChec
   return `${sourceState(gleif)} ${sourceState(wikidata)}`.trim();
 }
 
-function checkingText(gleif: SupplierSourceCheck, wikidata: SupplierSourceCheck): string {
+function checkingText(
+  gleif: SupplierSourceCheck,
+  wikidata: SupplierSourceCheck,
+): string {
   if (gleif.status === 'pending' && wikidata.status === 'pending') {
     return 'Checking GLEIF and Wikidata.';
   }
@@ -279,7 +414,10 @@ function checkingText(gleif: SupplierSourceCheck, wikidata: SupplierSourceCheck)
   return `${sourceState(gleif)} ${sourceState(wikidata)}`.trim();
 }
 
-function sanctionsItem(analysis: SupplierAnalysis, source: SupplierSourceCheck): BriefItem {
+function sanctionsItem(
+  analysis: SupplierAnalysis,
+  source: SupplierSourceCheck,
+): BriefItem {
   if (analysis.sanctionsHit === true || source.sanctionsHit === true) {
     const label = source.label ?? analysis.legalName ?? 'this company';
     return {
@@ -290,7 +428,11 @@ function sanctionsItem(analysis: SupplierAnalysis, source: SupplierSourceCheck):
     };
   }
 
-  if (analysis.sanctionsHit === false || source.status === 'not_found' || source.status === 'found') {
+  if (
+    analysis.sanctionsHit === false ||
+    source.status === 'not_found' ||
+    source.status === 'found'
+  ) {
     return { label: 'Sanctions', text: 'No sanctions match.' };
   }
 
@@ -305,9 +447,9 @@ function matchedPlace(source: SupplierSourceCheck): string {
 function gleifGap(source: SupplierSourceCheck): string {
   switch (source.status) {
     case 'not_found':
-      return 'GLEIF found no record, so no LEI is on file.';
+      return 'GLEIF found no record.';
     case 'error':
-      return 'GLEIF could not be checked, so no LEI is on file.';
+      return 'GLEIF could not be checked.';
     case 'pending':
       return 'GLEIF is still checking.';
     case 'found':
@@ -342,56 +484,102 @@ function countryPhrase(country: string | null): string {
     return '';
   }
 
-  const withArticle = /^(United|Netherlands|Czech|Philippines|Bahamas|Gambia|Maldives|Seychelles)/.test(
-    country,
-  );
+  const withArticle =
+    /^(United|Netherlands|Czech|Philippines|Bahamas|Gambia|Maldives|Seychelles)/.test(
+      country,
+    );
   return withArticle ? ` in the ${country}` : ` in ${country}`;
 }
 
 function FactValue({ row }: { row: FactRow }) {
+  if (!row.value) {
+    return null;
+  }
+
   if (row.kind === 'link') {
     return (
-      <a className="text-link" href={row.value} target="_blank" rel="noreferrer">
+      <a
+        className="text-link"
+        href={row.value}
+        target="_blank"
+        rel="noreferrer"
+      >
         {websiteLabel(row.value)}
       </a>
     );
   }
 
-  return <span className={row.kind === 'code' ? 'profile-code' : undefined}>{row.value}</span>;
+  return (
+    <span className={row.kind === 'code' ? 'profile-code' : undefined}>
+      {row.value}
+    </span>
+  );
 }
 
 type FactKind = 'text' | 'code' | 'link';
 
 type FactRow = {
   label: string;
-  value: string;
+  value: string | null;
   kind: FactKind;
 };
 
 type CompanyFacts = {
   legalName: string | null;
-  country: string | null;
-  city: string | null;
-  address: string | null;
-  lei: string | null;
-  registrationNumber: string | null;
   founded: string | null;
   entityStatus: string | null;
   website: string | null;
   description: string | null;
 };
 
+function displayCountry(
+  country: string | null,
+  analysis: SupplierAnalysis | null,
+): string | null {
+  const gleif = analysis?.sources.find((source) => source.source === 'gleif');
+  const wikidata = analysis?.sources.find(
+    (source) => source.source === 'wikidata',
+  );
+  return analysis?.country ?? gleif?.country ?? wikidata?.country ?? country;
+}
+
+function companySummary(
+  description: string | null,
+  country: string | null,
+): string | null {
+  if (!description) {
+    return null;
+  }
+
+  const text = country
+    ? description
+        .replace(
+          new RegExp(`\\s+(?:in|of)\\s+${escapeRegExp(country)}\\.?$`, 'i'),
+          '',
+        )
+        .replace(new RegExp(`,\\s*${escapeRegExp(country)}\\.?$`, 'i'), '')
+        .trim()
+    : description.trim();
+
+  if (!text) {
+    return null;
+  }
+
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function companyFacts(analysis: SupplierAnalysis | null): CompanyFacts {
   const gleif = analysis?.sources.find((source) => source.source === 'gleif');
-  const wikidata = analysis?.sources.find((source) => source.source === 'wikidata');
+  const wikidata = analysis?.sources.find(
+    (source) => source.source === 'wikidata',
+  );
 
   return {
     legalName: analysis?.legalName ?? gleif?.label ?? null,
-    country: analysis?.country ?? gleif?.country ?? wikidata?.country ?? null,
-    city: gleif?.city ?? null,
-    address: gleif?.address ?? null,
-    lei: gleif?.lei ?? null,
-    registrationNumber: gleif?.registrationNumber ?? null,
     founded: wikidata?.founded ?? gleif?.founded ?? null,
     entityStatus: gleif?.entityStatus ?? null,
     website: wikidata?.website ?? null,
@@ -400,22 +588,11 @@ function companyFacts(analysis: SupplierAnalysis | null): CompanyFacts {
 }
 
 function factRows(facts: CompanyFacts): FactRow[] {
-  const rows: FactRow[] = [];
-  const add = (label: string, value: string | null, kind: FactKind = 'text') => {
-    if (value) {
-      rows.push({ label, value, kind });
-    }
-  };
-
-  add('Legal name', facts.legalName);
-  add('Country', facts.country);
-  add('City', facts.city);
-  add('Address', facts.address);
-  add('LEI', facts.lei, 'code');
-  add('Registration', facts.registrationNumber, 'code');
-  add('Founded', facts.founded);
-  add('Website', facts.website, 'link');
-  return rows;
+  return [
+    { label: 'Legal name', value: facts.legalName, kind: 'text' },
+    { label: 'Founded', value: facts.founded, kind: 'text' },
+    { label: 'Website', value: facts.website, kind: 'link' },
+  ];
 }
 
 function registryStatusLabel(status: string): string {
@@ -437,7 +614,53 @@ function websiteLabel(url: string): string {
   }
 }
 
-function orderedSources(analysis: SupplierAnalysis | null): SupplierSourceCheck[] {
+function visibleSources(
+  sources: SupplierSourceCheck[],
+  resetting: boolean,
+): SupplierSourceCheck[] {
+  if (!resetting) {
+    return sources;
+  }
+
+  return sources.map((source) => ({
+    ...source,
+    status: 'pending',
+    label: null,
+    url: null,
+    country: null,
+    sanctionsHit: null,
+    lei: null,
+    city: null,
+    address: null,
+    registrationNumber: null,
+    founded: null,
+    entityStatus: null,
+    website: null,
+    description: null,
+    error: null,
+  }));
+}
+
+function CheckProgress({ checked, total }: { checked: number; total: number }) {
+  const percent = total === 0 ? 0 : Math.round((checked / total) * 100);
+
+  return (
+    <div
+      className="check-progress-track"
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={total}
+      aria-valuenow={checked}
+      aria-label="Sources checked"
+    >
+      <span style={{ width: `${percent}%` }} />
+    </div>
+  );
+}
+
+function orderedSources(
+  analysis: SupplierAnalysis | null,
+): SupplierSourceCheck[] {
   const bySource = new Map(
     (analysis?.sources ?? []).map((source) => [source.source, source]),
   );
@@ -464,18 +687,33 @@ function orderedSources(analysis: SupplierAnalysis | null): SupplierSourceCheck[
   );
 }
 
-function SourceRow({ source }: { source: SupplierSourceCheck }) {
+function SourceRow({
+  source,
+  checking,
+}: {
+  source: SupplierSourceCheck;
+  checking: boolean;
+}) {
   const detail = sourceDetail(source);
+  const loading = checking && source.status === 'pending';
 
   return (
-    <li className="source-row">
+    <li className={loading ? 'source-row is-checking' : 'source-row'}>
       <div className="source-name">
         <h3>{sourceTitle(source.source)}</h3>
-        <p className={`status ${sourceTone(source)}`}>{sourceSummary(source)}</p>
+        <p className={`status ${loading ? '' : sourceTone(source)}`}>
+          {loading ? <span className="spinner" aria-hidden="true" /> : null}
+          {sourceSummary(source, checking)}
+        </p>
       </div>
       <p className="source-detail">{detail}</p>
       {source.url ? (
-        <a className="text-link" href={source.url} target="_blank" rel="noreferrer">
+        <a
+          className="text-link"
+          href={source.url}
+          target="_blank"
+          rel="noreferrer"
+        >
           Record
         </a>
       ) : (
@@ -517,10 +755,10 @@ function sourceTitle(source: SourceName): string {
   }
 }
 
-function sourceSummary(source: SupplierSourceCheck): string {
+function sourceSummary(source: SupplierSourceCheck, checking: boolean): string {
   switch (source.status) {
     case 'pending':
-      return 'Checking…';
+      return checking ? 'Checking…' : 'Not checked';
     case 'error':
       return 'This source could not be checked right now';
     case 'not_found':
@@ -541,7 +779,10 @@ function sourceSummary(source: SupplierSourceCheck): string {
 }
 
 function sourceTone(source: SupplierSourceCheck): string {
-  if (source.status === 'error' || (source.source === 'opensanctions' && source.sanctionsHit)) {
+  if (
+    source.status === 'error' ||
+    (source.source === 'opensanctions' && source.sanctionsHit)
+  ) {
     return 'error';
   }
 
@@ -552,12 +793,25 @@ function sourceTone(source: SupplierSourceCheck): string {
   return '';
 }
 
-function StatusPill({ status }: { status: AnalysisStatus | null }) {
+function StatusPill({
+  status,
+  assessing,
+}: {
+  status: AnalysisStatus | null;
+  assessing: boolean;
+}) {
+  if (assessing) {
+    return <span className="risk-pill watch">Checking sources</span>;
+  }
+
   const view = statusView(status);
   return <span className={`risk-pill ${view.tone}`}>{view.label}</span>;
 }
 
-function statusView(status: AnalysisStatus | null): { tone: string; label: string } {
+function statusView(status: AnalysisStatus | null): {
+  tone: string;
+  label: string;
+} {
   switch (status) {
     case 'queued':
       return { tone: 'watch', label: 'Queued' };
@@ -576,14 +830,25 @@ function statusView(status: AnalysisStatus | null): { tone: string; label: strin
   }
 }
 
-function ConfidencePill({ confidence }: { confidence: AnalysisConfidence | null }) {
+function ConfidencePill({
+  confidence,
+  assessing,
+}: {
+  confidence: AnalysisConfidence | null;
+  assessing: boolean;
+}) {
+  if (assessing) {
+    return <span className="risk-pill watch">Confidence pending</span>;
+  }
+
   const view = confidenceView(confidence);
   return <span className={`risk-pill ${view.tone}`}>{view.label}</span>;
 }
 
-function confidenceView(
-  confidence: AnalysisConfidence | null,
-): { tone: string; label: string } {
+function confidenceView(confidence: AnalysisConfidence | null): {
+  tone: string;
+  label: string;
+} {
   switch (confidence) {
     case 'verified':
       return { tone: 'stable', label: 'Verified' };
@@ -602,7 +867,17 @@ function confidenceView(
   }
 }
 
-function SanctionsPill({ sanctionsHit }: { sanctionsHit: boolean | null }) {
+function SanctionsPill({
+  sanctionsHit,
+  assessing,
+}: {
+  sanctionsHit: boolean | null;
+  assessing: boolean;
+}) {
+  if (assessing) {
+    return <span className="risk-pill watch">Sanctions pending</span>;
+  }
+
   if (sanctionsHit === true) {
     return <span className="risk-pill critical">Sanctions hit</span>;
   }

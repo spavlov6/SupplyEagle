@@ -1,18 +1,34 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import type { RouteSourceFacts, RouteSourceName, ShippingMode } from '@supplyeagle/types';
+import type {
+  RouteSourceFacts,
+  RouteSourceName,
+  ShippingMode,
+} from '@supplyeagle/types';
 import { In, Repository } from 'typeorm';
 import { SupplierAnalysis } from '../analysis/entities/supplier-analysis.entity.js';
 import { categoryForSource, ROUTE_SOURCES } from './categories.js';
-import { fetchGdacs, fetchEonet, fetchReliefWebDisasters, fetchUsgs } from './disasters.js';
+import {
+  fetchGdacs,
+  fetchEonet,
+  fetchReliefWebDisasters,
+  fetchUsgs,
+} from './disasters.js';
 import { RouteAssessment } from './entities/route-assessment.entity.js';
 import { RouteSourceCheck } from './entities/route-source-check.entity.js';
 import type { RouteSupplier } from './entities/route-supplier.entity.js';
-import { summarizeDiscovery, type DiscoveryBag } from './finish.js';
+import {
+  disasterFindings,
+  newsFindings,
+  summarizeDiscovery,
+  supplierFindings,
+  weatherFindings,
+  type DiscoveryBag,
+} from './finish.js';
 import { haversineKm, transitDays } from './geo.js';
 import { locatePlace, LocateError, type LocatedPlace } from './geocode.js';
 import { clip } from './http.js';
-import { fetchGdelt, fetchGoogleNews, fetchReliefWebNews } from './news.js';
+import { fetchGoogleNews, fetchReliefWebNews } from './news.js';
 import { RouteRedisService } from './route-redis.service.js';
 import { RouteSummaryService } from './route-summary.service.js';
 import type {
@@ -41,6 +57,7 @@ type Preliminary = {
   news: NewsReport[];
   weather: WeatherReading[];
   disasters: DisasterReport[];
+  suppliers: SupplierFlagInput[];
 };
 
 @Injectable()
@@ -71,12 +88,17 @@ export class RouteDiscoveryRunner {
     const route = analysis.route;
     try {
       await this.markRunning(analysis);
-      const checks = await this.checks.find({ where: { analysisId: analysis.id } });
+      const checks = await this.checks.find({
+        where: { analysisId: analysis.id },
+      });
       const origin = await this.locateEnd(route.origin);
       await delay(1_100);
       const destination = await this.locateEnd(route.destination);
       if (!origin || !destination) {
-        const failed = [origin ? null : route.origin, destination ? null : route.destination]
+        const failed = [
+          origin ? null : route.origin,
+          destination ? null : route.destination,
+        ]
           .filter((place): place is string => place !== null)
           .join(' and ');
         await this.failLocate(
@@ -95,32 +117,20 @@ export class RouteDiscoveryRunner {
         suppliers,
       });
       const finished = summarizeDiscovery(bag);
-      for (const check of checks) {
-        const row = finished.checks[check.source];
-        if (!row) {
-          continue;
-        }
+      await Promise.all(
+        checks.map(async (check) => {
+          const row = finished.checks[check.source];
+          if (!row) {
+            return;
+          }
 
-        await this.checks.update(check.id, {
-          label: row.label,
-          url: row.url,
-          facts: row.facts,
-        });
-      }
-
-      let summary: string | null = null;
-      try {
-        summary = await this.claude.summarize({
-          origin: route.origin,
-          destination: route.destination,
-          mode: route.mode,
-          decision: finished.decision,
-          checks: finished.checks,
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Claude request failed';
-        this.logger.error(`Route summary failed for ${routeId}: ${message}`);
-      }
+          await this.checks.update(check.id, {
+            label: row.label,
+            url: row.url,
+            facts: row.facts,
+          });
+        }),
+      );
 
       const days = transitDays(route.mode, haversineKm(origin, destination));
       await this.assessments.update(analysis.id, {
@@ -129,20 +139,45 @@ export class RouteDiscoveryRunner {
         laneStatus: finished.decision.laneStatus,
         transitDays: days,
         why: clip(finished.decision.why, 300),
-        summary: summary ? clip(summary, 4_000) : null,
+        summary: null,
         error: null,
       });
       await this.publish(analysis.userId, analysis.routeId);
+
+      try {
+        const summary = await this.claude.summarize({
+          origin: route.origin,
+          destination: route.destination,
+          mode: route.mode,
+          decision: finished.decision,
+          checks: finished.checks,
+        });
+        await this.assessments.update(analysis.id, {
+          summary: clip(summary, 4_000),
+        });
+        await this.publish(analysis.userId, analysis.routeId);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Claude request failed';
+        this.logger.error(`Route summary failed for ${routeId}: ${message}`);
+      }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Route assessment failed';
+      const message =
+        error instanceof Error ? error.message : 'Route assessment failed';
       this.logger.error(`Route assessment failed for ${routeId}: ${message}`);
-      await this.assessments.update(analysis.id, { status: 'failed', error: message });
+      await this.assessments.update(analysis.id, {
+        status: 'failed',
+        error: message,
+      });
       await this.publish(analysis.userId, analysis.routeId);
     }
   }
 
   private async markRunning(analysis: RouteAssessment): Promise<void> {
-    await this.assessments.update(analysis.id, { status: 'running', error: null });
+    await this.assessments.update(analysis.id, {
+      status: 'running',
+      error: null,
+    });
     await this.checks.update(
       { analysisId: analysis.id },
       { status: 'pending', label: null, url: null, facts: null, error: null },
@@ -173,7 +208,10 @@ export class RouteDiscoveryRunner {
       weather: [],
       disasters: [],
       suppliers: lane.suppliers,
-      placeNames: { origin: lane.origin.name, destination: lane.destination.name },
+      placeNames: {
+        origin: lane.origin.name,
+        destination: lane.destination.name,
+      },
       errors: {},
     };
     const places = [
@@ -181,28 +219,30 @@ export class RouteDiscoveryRunner {
       { end: 'destination' as const, name: lane.destination.name },
     ];
 
-    for (const source of ROUTE_SOURCES) {
-      const check = checks.find((row) => row.source === source);
-      if (!check) {
-        continue;
-      }
+    await Promise.all(
+      ROUTE_SOURCES.map(async (source) => {
+        const check = checks.find((row) => row.source === source);
+        if (!check) {
+          return;
+        }
 
-      const outcome = await this.fetchSource(source, lane, places);
-      if (outcome.error) {
-        bag.errors[source] = outcome.error;
-      }
-      bag.news.push(...outcome.news);
-      bag.weather.push(...outcome.weather);
-      bag.disasters.push(...outcome.disasters);
-      await this.checks.update(check.id, {
-        status: outcome.status,
-        label: outcome.label,
-        url: outcome.url,
-        error: outcome.error,
-        facts: preliminaryFacts(source, outcome),
-      });
-      await this.publish(analysis.userId, analysis.routeId);
-    }
+        const outcome = await this.fetchSource(source, lane, places);
+        if (outcome.error) {
+          bag.errors[source] = outcome.error;
+        }
+        bag.news.push(...outcome.news);
+        bag.weather.push(...outcome.weather);
+        bag.disasters.push(...outcome.disasters);
+        await this.checks.update(check.id, {
+          status: outcome.status,
+          label: outcome.label,
+          url: outcome.url,
+          error: outcome.error,
+          facts: preliminaryFacts(source, outcome),
+        });
+        await this.publish(analysis.userId, analysis.routeId);
+      }),
+    );
 
     return bag;
   }
@@ -213,19 +253,23 @@ export class RouteDiscoveryRunner {
     places: Array<{ end: 'origin' | 'destination'; name: string }>,
   ): Promise<Preliminary> {
     switch (source) {
-      case 'gdelt':
-        return fromNews(await fetchGdelt(places));
       case 'google_news':
         return fromNews(await fetchGoogleNews(places));
-      case 'reliefweb':
-        return fromRelief(
-          await fetchReliefWebNews(places),
-          await fetchReliefWebDisasters(lane.origin, lane.destination),
-        );
+      case 'reliefweb': {
+        const [news, disasters] = await Promise.all([
+          fetchReliefWebNews(places),
+          fetchReliefWebDisasters(lane.origin, lane.destination),
+        ]);
+        return fromRelief(news, disasters);
+      }
       case 'open_meteo':
-        return fromWeather(await fetchOpenMeteo(lane.mode, lane.origin, lane.destination));
+        return fromWeather(
+          await fetchOpenMeteo(lane.mode, lane.origin, lane.destination),
+        );
       case 'met_norway':
-        return fromWeather(await fetchMetNorway(lane.mode, lane.origin, lane.destination));
+        return fromWeather(
+          await fetchMetNorway(lane.mode, lane.origin, lane.destination),
+        );
       case 'gdacs':
         return fromDisasters(await fetchGdacs(lane.origin, lane.destination));
       case 'eonet':
@@ -241,7 +285,9 @@ export class RouteDiscoveryRunner {
     }
   }
 
-  private async supplierFlags(links: RouteSupplier[]): Promise<SupplierFlagInput[]> {
+  private async supplierFlags(
+    links: RouteSupplier[],
+  ): Promise<SupplierFlagInput[]> {
     const ids = [...new Set(links.map((link) => link.supplierId))];
     const rows =
       ids.length === 0
@@ -293,6 +339,7 @@ export class RouteDiscoveryRunner {
           hazard: null,
           place: null,
           detail: message,
+          items: [],
         },
       });
     }
@@ -308,17 +355,29 @@ export class RouteDiscoveryRunner {
   }
 }
 
-function preliminaryFacts(source: RouteSourceName, outcome: Preliminary): RouteSourceFacts {
+function preliminaryFacts(
+  source: RouteSourceName,
+  outcome: Preliminary,
+): RouteSourceFacts {
   return {
     category: categoryForSource(source),
     agreement: null,
     hazard: outcome.hazard,
     place: outcome.place,
     detail: outcome.detail,
+    items: [
+      ...newsFindings(outcome.news),
+      ...weatherFindings(outcome.weather),
+      ...disasterFindings(outcome.disasters),
+      ...supplierFindings(outcome.suppliers),
+    ],
   };
 }
 
-function fromNews(result: { reports: NewsReport[]; error: string | null }): Preliminary {
+function fromNews(result: {
+  reports: NewsReport[];
+  error: string | null;
+}): Preliminary {
   const first = result.reports[0];
   if (result.error && result.reports.length === 0) {
     return blank('error', result.error);
@@ -333,7 +392,9 @@ function fromNews(result: { reports: NewsReport[]; error: string | null }): Prel
     url: first.url ? clip(first.url, 500) : null,
     detail: result.reports
       .slice(0, 3)
-      .map((report) => `${report.hazard} at ${report.place}: ${report.headline}`)
+      .map(
+        (report) => `${report.hazard} at ${report.place}: ${report.headline}`,
+      )
       .join('; '),
     hazard: first.hazard,
     place: first.place,
@@ -341,6 +402,7 @@ function fromNews(result: { reports: NewsReport[]; error: string | null }): Prel
     news: result.reports,
     weather: [],
     disasters: [],
+    suppliers: [],
   };
 }
 
@@ -350,7 +412,10 @@ function fromRelief(
 ): Preliminary {
   if (news.reports.length === 0 && disasters.reports.length === 0) {
     if (news.error || disasters.error) {
-      return blank('error', news.error ?? disasters.error ?? 'ReliefWeb request failed');
+      return blank(
+        'error',
+        news.error ?? disasters.error ?? 'ReliefWeb request failed',
+      );
     }
 
     return { ...blank('not_found', null), detail: 'No matching report' };
@@ -362,17 +427,23 @@ function fromRelief(
     status: 'found',
     label: newsOutcome.label ?? disasterOutcome.label,
     url: newsOutcome.url ?? disasterOutcome.url,
-    detail: [newsOutcome.detail, disasterOutcome.detail].filter((part) => part).join('; '),
+    detail: [newsOutcome.detail, disasterOutcome.detail]
+      .filter((part) => part)
+      .join('; '),
     hazard: newsOutcome.hazard ?? disasterOutcome.hazard,
     place: newsOutcome.place ?? disasterOutcome.place,
     error: null,
     news: news.reports,
     weather: [],
     disasters: disasters.reports,
+    suppliers: [],
   };
 }
 
-function fromWeather(result: { readings: WeatherReading[]; error: string | null }): Preliminary {
+function fromWeather(result: {
+  readings: WeatherReading[];
+  error: string | null;
+}): Preliminary {
   if (result.error && result.readings.length === 0) {
     return blank('error', result.error);
   }
@@ -391,6 +462,7 @@ function fromWeather(result: { readings: WeatherReading[]; error: string | null 
     news: [],
     weather: result.readings,
     disasters: [],
+    suppliers: [],
   };
 }
 
@@ -412,7 +484,10 @@ function fromDisasters(result: {
     url: first.url ? clip(first.url, 500) : null,
     detail: result.reports
       .slice(0, 3)
-      .map((report) => `${report.hazardClass} at ${report.place}: ${report.headline}`)
+      .map(
+        (report) =>
+          `${report.hazardClass} at ${report.place}: ${report.headline}`,
+      )
       .join('; '),
     hazard: first.hazardClass,
     place: first.place,
@@ -420,6 +495,7 @@ function fromDisasters(result: {
     news: [],
     weather: [],
     disasters: result.reports,
+    suppliers: [],
   };
 }
 
@@ -433,10 +509,14 @@ function fromSuppliers(suppliers: SupplierFlagInput[]): Preliminary {
   );
   const first = flagged[0];
   if (!first) {
-    return { ...blank('not_found', null), detail: 'No supplier flags' };
+    return {
+      ...blank('not_found', null),
+      detail: 'No supplier flags',
+      suppliers,
+    };
   }
 
-  const why = `propagated from → ${first.name}`;
+  const why = first.name;
   return {
     status: 'found',
     label: clip(why, 300),
@@ -448,10 +528,14 @@ function fromSuppliers(suppliers: SupplierFlagInput[]): Preliminary {
     news: [],
     weather: [],
     disasters: [],
+    suppliers,
   };
 }
 
-function blank(status: 'not_found' | 'error', error: string | null): Preliminary {
+function blank(
+  status: 'not_found' | 'error',
+  error: string | null,
+): Preliminary {
   return {
     status,
     label: null,
@@ -463,6 +547,7 @@ function blank(status: 'not_found' | 'error', error: string | null): Preliminary
     news: [],
     weather: [],
     disasters: [],
+    suppliers: [],
   };
 }
 

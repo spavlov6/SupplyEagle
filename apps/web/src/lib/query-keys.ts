@@ -17,4 +17,9 @@ export const queryKeys = {
     list: () => [...queryKeys.routes.all, 'list'] as const,
     detail: (id: string) => [...queryKeys.routes.all, 'detail', id] as const,
   },
+  places: {
+    all: ['places'] as const,
+    lane: (origin: string, destination: string) =>
+      [...queryKeys.places.all, 'country', origin, destination] as const,
+  },
 };

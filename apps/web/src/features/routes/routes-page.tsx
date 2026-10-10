@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import type { AnalysisStatus, LaneStatus, RiskState, RouteListItem, ShippingMode } from '@supplyeagle/types';
+import type {
+  AnalysisStatus,
+  LaneStatus,
+  RiskState,
+  RouteListItem,
+  ShippingMode,
+} from '@supplyeagle/types';
 import { AddRouteDialog } from './add-route-dialog';
+import { LaneTitle } from './lane-title';
 import { useRoutesQuery } from './use-routes';
 
 type Density = 'comfortable' | 'compact';
@@ -24,7 +31,9 @@ export function RoutesPage() {
             type="button"
             className="density-toggle"
             onClick={() =>
-              setDensity((current) => (current === 'comfortable' ? 'compact' : 'comfortable'))
+              setDensity((current) =>
+                current === 'comfortable' ? 'compact' : 'comfortable',
+              )
             }
           >
             density: <span>{density}</span>
@@ -38,7 +47,11 @@ export function RoutesPage() {
       <section className="card suppliers-card" aria-live="polite">
         <div className="suppliers-scroll">
           <table
-            className={density === 'compact' ? 'suppliers-table compact' : 'suppliers-table'}
+            className={
+              density === 'compact'
+                ? 'suppliers-table compact'
+                : 'suppliers-table'
+            }
             aria-label="Routes"
           >
             <thead>
@@ -48,23 +61,25 @@ export function RoutesPage() {
                 <th>Risk</th>
                 <th>Suppliers</th>
                 <th>Transit</th>
-                <th>Why</th>
               </tr>
             </thead>
             <tbody>
               {routesQuery.isPending ? (
                 <tr>
-                  <td colSpan={6} className="suppliers-empty">
+                  <td colSpan={5} className="suppliers-empty">
                     Loading lanes…
                   </td>
                 </tr>
               ) : null}
               {routesQuery.isError ? (
                 <tr>
-                  <td colSpan={6} className="suppliers-empty">
+                  <td colSpan={5} className="suppliers-empty">
                     <p className="status error">Could not load routes</p>
                     <p className="detail">Refresh the page, or try again.</p>
-                    <button type="button" onClick={() => void routesQuery.refetch()}>
+                    <button
+                      type="button"
+                      onClick={() => void routesQuery.refetch()}
+                    >
                       Retry
                     </button>
                   </td>
@@ -72,7 +87,7 @@ export function RoutesPage() {
               ) : null}
               {routesQuery.data && routes.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="suppliers-empty">
+                  <td colSpan={5} className="suppliers-empty">
                     No lanes yet.
                   </td>
                 </tr>
@@ -90,7 +105,9 @@ export function RoutesPage() {
         ) : null}
       </section>
 
-      {dialogOpen ? <AddRouteDialog onClose={() => setDialogOpen(false)} /> : null}
+      {dialogOpen ? (
+        <AddRouteDialog onClose={() => setDialogOpen(false)} />
+      ) : null}
     </main>
   );
 }
@@ -105,7 +122,9 @@ function subtitle(query: ReturnType<typeof useRoutesQuery>): string {
   }
 
   const routes = query.data?.routes ?? [];
-  const disrupted = routes.filter((route) => route.laneStatus === 'disrupted').length;
+  const disrupted = routes.filter(
+    (route) => route.laneStatus === 'disrupted',
+  ).length;
   return `${routes.length} lanes · ${disrupted} disrupted · risk propagation shown, never guessed`;
 }
 
@@ -117,7 +136,7 @@ function RouteRow({ route }: { route: RouteListItem }) {
       <td>
         <div className="supplier-name lane-name">
           <Link to={`/routes/${route.id}`}>
-            {route.origin} → {route.destination}
+            <LaneTitle origin={route.origin} destination={route.destination} />
           </Link>
           <span className="mode-pill">{modeLabel(route.mode)}</span>
         </div>
@@ -125,19 +144,32 @@ function RouteRow({ route }: { route: RouteListItem }) {
       <td>
         <StatusCell route={route} assessing={assessing} />
       </td>
-      <td>{assessing || !route.riskState ? <Empty /> : <RiskPill risk={route.riskState} />}</td>
+      <td>
+        {assessing || !route.riskState ? (
+          <Empty />
+        ) : (
+          <RiskPill risk={route.riskState} />
+        )}
+      </td>
       <td>{assessing ? <Empty /> : route.supplierCount}</td>
       <td className="muted-cell">
-        {assessing || route.transitDays === null ? <Empty /> : `${route.transitDays}d`}
-      </td>
-      <td className="why-cell" title={route.why ?? undefined}>
-        {assessing || !route.why ? <Empty /> : route.why}
+        {assessing || route.transitDays === null ? (
+          <Empty />
+        ) : (
+          `${route.transitDays}d`
+        )}
       </td>
     </tr>
   );
 }
 
-function StatusCell({ route, assessing }: { route: RouteListItem; assessing: boolean }) {
+function StatusCell({
+  route,
+  assessing,
+}: {
+  route: RouteListItem;
+  assessing: boolean;
+}) {
   if (assessing) {
     return <span className="risk-pill watch">Assessing</span>;
   }

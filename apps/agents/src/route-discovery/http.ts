@@ -1,7 +1,23 @@
 export const ROUTE_USER_AGENT =
   'SupplyEagle/0.1 (route discovery; contact: ops@supplyeagle.app)';
 
-export async function requestText(url: string, accept = 'application/json'): Promise<string> {
+export async function requestText(
+  url: string,
+  accept = 'application/json',
+): Promise<string> {
+  try {
+    return await requestTextOnce(url, accept);
+  } catch (error) {
+    if (!isTransient(error)) {
+      throw error;
+    }
+
+    await delay(750);
+    return requestTextOnce(url, accept);
+  }
+}
+
+async function requestTextOnce(url: string, accept: string): Promise<string> {
   const response = await fetch(url, {
     headers: {
       accept,
@@ -14,6 +30,19 @@ export async function requestText(url: string, accept = 'application/json'): Pro
   }
 
   return response.text();
+}
+
+function isTransient(error: unknown): boolean {
+  const message = errorMessage(error, '');
+  return /fetch failed|terminated|econnreset|other side closed|socket|HTTP 406/i.test(
+    message,
+  );
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 export async function requestJson(url: string): Promise<unknown> {
@@ -53,5 +82,10 @@ export function clip(value: string, max: number): string {
 }
 
 export function errorMessage(error: unknown, fallback: string): string {
-  return error instanceof Error && error.message.trim().length > 0 ? error.message : fallback;
+  if (!(error instanceof Error) || error.message.trim().length === 0) {
+    return fallback;
+  }
+
+  const cause = error.cause instanceof Error ? error.cause.message.trim() : '';
+  return cause.length > 0 ? `${error.message}: ${cause}` : error.message;
 }

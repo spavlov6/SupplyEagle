@@ -1,4 +1,8 @@
-import type { AnalysisConfidence, AnalysisStatus, SourceCheckStatus } from './supplier.js';
+import type {
+  AnalysisConfidence,
+  AnalysisStatus,
+  SourceCheckStatus,
+} from './supplier.js';
 
 export type ShippingMode = 'air' | 'sea';
 
@@ -7,7 +11,6 @@ export type LaneStatus = 'active' | 'disrupted';
 export type RiskState = 'critical' | 'elevated' | 'watch' | 'stable';
 
 export type RouteSourceName =
-  | 'gdelt'
   | 'google_news'
   | 'reliefweb'
   | 'open_meteo'
@@ -19,7 +22,43 @@ export type RouteSourceName =
 
 export type RouteSourceCategory = 'news' | 'weather' | 'disaster' | 'supplier';
 
-export type RouteAgreement = 'confirmed' | 'unverified';
+export type RouteAgreement = 'confirmed' | 'clear' | 'unverified';
+
+export type RoutePlace = 'origin' | 'destination';
+
+export type RouteNewsItem = {
+  kind: 'news';
+  place: RoutePlace;
+  hazard: string;
+  headline: string;
+  url: string | null;
+};
+
+export type RouteWeatherItem = {
+  kind: 'weather';
+  place: RoutePlace;
+  windKmh: number | null;
+  waveHeightM: number | null;
+  visibilityM: number | null;
+};
+
+export type RouteDisasterItem = {
+  kind: 'disaster';
+  place: RoutePlace;
+  hazard: string;
+  headline: string;
+  url: string | null;
+};
+
+export type RouteSupplierItem = {
+  kind: 'supplier';
+  name: string;
+  sanctionsHit: boolean | null;
+  confidence: AnalysisConfidence | null;
+};
+
+export type RouteFinding =
+  RouteNewsItem | RouteWeatherItem | RouteDisasterItem | RouteSupplierItem;
 
 export type RouteSourceFacts = {
   category: RouteSourceCategory;
@@ -27,6 +66,7 @@ export type RouteSourceFacts = {
   hazard: string | null;
   place: string | null;
   detail: string | null;
+  items: RouteFinding[];
 };
 
 export type CreateRouteRequest = {
@@ -72,6 +112,7 @@ export type RouteSourceCheck = {
   place: string | null;
   detail: string | null;
   error: string | null;
+  items: RouteFinding[];
 };
 
 export type RouteAssessment = {
@@ -118,7 +159,8 @@ export type RouteAssessmentUpdatedEvent = {
   routeId: string;
 };
 
-export type RouteEvent = RouteCreatedEvent | RouteReassessEvent | RouteAssessmentUpdatedEvent;
+export type RouteEvent =
+  RouteCreatedEvent | RouteReassessEvent | RouteAssessmentUpdatedEvent;
 
 export type RouteAssessmentUpdatedMessage = {
   routeId: string;
