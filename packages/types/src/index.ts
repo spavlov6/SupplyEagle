@@ -1,4 +1,12 @@
 export type {
+  Alert,
+  AlertCreatedMessage,
+  AlertListResponse,
+  AlertSeverity,
+  AlertStatus,
+  AlertType,
+} from './alert.js';
+export type {
   AuthResponse,
   AuthUser,
   LoginRequest,
@@ -9,6 +17,35 @@ export type {
   HealthServiceName,
   HealthStatus,
 } from './health.js';
+export type { OverviewResponse, RouteRiskCounts } from './overview.js';
+export type {
+  AgentName,
+  MonitoredHeadline,
+  PipelineCompletedEvent,
+  PipelineCompletedMessage,
+  PipelineEvent,
+  PipelineProgressKind,
+  PipelineRequestedEvent,
+  PipelineRun,
+  PipelineRunListResponse,
+  PipelineRunStatus,
+  PipelineSchedule,
+  PipelineStage,
+  PipelineStageEvent,
+  PipelineStageMessage,
+  PipelineStageStatus,
+  PipelineStartedEvent,
+  PipelineStartedMessage,
+  PipelineStatusResponse,
+  RecommendationCreatedEvent,
+  RouteBaseline,
+  ScanBaseline,
+  ScheduleAppliedEvent,
+  ScheduleUpdatedEvent,
+  SupplierBaseline,
+  UpdatePipelineScheduleRequest,
+  AlertCreatedEvent,
+} from './pipeline.js';
 export type {
   CreateRouteRequest,
   LaneStatus,
@@ -37,6 +74,14 @@ export type {
   RouteWeatherItem,
   ShippingMode,
 } from './route.js';
+export type {
+  Recommendation,
+  RecommendationCreatedMessage,
+  RecommendationListResponse,
+  RecommendationPlan,
+  RecommendationStatus,
+  RecommendationType,
+} from './recommendation.js';
 export type {
   AnalysisConfidence,
   AnalysisStatus,
