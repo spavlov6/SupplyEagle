@@ -8,7 +8,7 @@ async function bootstrap() {
   const config = app.get(ConfigService);
 
   app.enableCors({
-    origin: config.get<string>('CORS_ORIGIN') ?? 'http://localhost:5173',
+    origin: config.get<string>('CORS_ORIGIN') ?? 'http://localhost:3000',
   });
   app.useGlobalPipes(
     new ValidationPipe({
@@ -18,7 +18,7 @@ async function bootstrap() {
     }),
   );
 
-  const port = config.get<number>('PORT') ?? 3001;
+  const port = config.get<number>('PORT') ?? 8081;
   await app.listen(port);
 }
 

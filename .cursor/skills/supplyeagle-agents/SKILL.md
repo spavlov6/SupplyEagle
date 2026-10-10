@@ -11,7 +11,7 @@ description: Conventions for the empty SupplyEagle agents NestJS service and how
 
 - `apps/api` — HTTP for the web app and other clients.
 - `apps/agents` — long-running or internal agent work. The browser does not call it.
-- Later, `apps/api` may call agents over HTTP using `AGENTS_URL` (`http://localhost:3001` in `.env.example`). Do not add that client until there is a real agents endpoint.
+- Later, `apps/api` may call agents over HTTP using `AGENTS_URL` (`http://localhost:8081` in `.env.example`). Do not add that client until there is a real agents endpoint.
 
 ## Adding the first agent
 

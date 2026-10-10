@@ -15,7 +15,7 @@ description: TanStack Query, React Router, and Vite API client conventions for t
 queryFn: () => apiClient<HealthResponse>('/health')
 ```
 
-`VITE_API_URL` defaults to `/api`. The Vite proxy strips that prefix and forwards to `http://localhost:3000`.
+`VITE_API_URL` defaults to `/api`. The Vite proxy strips that prefix and forwards to `http://localhost:8080`.
 
 ## Rules
 

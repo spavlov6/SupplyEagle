@@ -5,7 +5,7 @@ description: NestJS 12 conventions for the SupplyEagle API and agents services, 
 
 # SupplyEagle NestJS
 
-Both `@supplyeagle/api` (port 3000) and `@supplyeagle/agents` (port 3001) are independent Nest 12 ESM apps (`"type": "module"`, `module`/`moduleResolution`: `nodenext`).
+Both `@supplyeagle/api` (port 8080) and `@supplyeagle/agents` (port 8081) are independent Nest 12 ESM apps (`"type": "module"`, `module`/`moduleResolution`: `nodenext`).
 
 ## Imports
 
@@ -22,9 +22,9 @@ Use `import type` for `@supplyeagle/types`. Do not import runtime values from th
 Keep this stack in `main.ts`:
 
 - `ConfigModule.forRoot({ isGlobal: true })` in `AppModule`
-- `enableCors` from `CORS_ORIGIN` (default `http://localhost:5173`)
+- `enableCors` from `CORS_ORIGIN` (default `http://localhost:3000`)
 - global `ValidationPipe` with `whitelist`, `forbidNonWhitelisted`, `transform`
-- listen on `PORT` from env (api 3000, agents 3001)
+- listen on `PORT` from env (api 8080, agents 8081)
 
 Copy new env keys into `.env.example`. Prefix agents-only keys with `AGENTS_`.
 

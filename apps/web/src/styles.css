@@ -1,8 +1,9 @@
 :root {
+  --background: #f4f1ea;
   color: #122017;
-  background: #f4f1ea;
+  background: var(--background);
   font-family:
-    "Iowan Old Style", "Palatino Linotype", Palatino, "Times New Roman", serif;
+    'Iowan Old Style', 'Palatino Linotype', Palatino, 'Times New Roman', serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -41,6 +42,35 @@ body {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #2f6a3a;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  color: #2f6a3a;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.logo-mark {
+  width: 1.35rem;
+  height: 1.35rem;
+  flex: none;
+}
+
+.logo-header {
+  gap: 0.6rem;
+  font-size: 1.05rem;
+}
+
+.logo-header .logo-mark {
+  width: 2.25rem;
+  height: 2.25rem;
 }
 
 .lede {
@@ -116,4 +146,100 @@ button {
   padding: 0.5rem 0.85rem;
   font: inherit;
   cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1.5rem;
+}
+
+.auth-card {
+  --background: #fffdf8;
+  width: min(100%, 24rem);
+  padding: 1.5rem 1.4rem 1.4rem;
+  background: var(--background);
+  border: 1px solid #d7d0c3;
+  border-radius: 12px;
+}
+
+.auth-card h1 {
+  margin: 0.35rem 0 0;
+  font-size: 2rem;
+  letter-spacing: -0.03em;
+}
+
+.auth-form {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1.25rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.field span {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #667066;
+}
+
+input {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #d7d0c3;
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+}
+
+.form-error {
+  margin: 0;
+  color: #a32626;
+}
+
+.auth-switch {
+  margin: 1rem 0 0;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.95rem;
+}
+
+.auth-switch a {
+  color: #2f6a3a;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-header {
+  --background: #fffdf8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #d7d0c3;
+  background: var(--background);
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.app-header button {
+  margin-top: 0;
 }

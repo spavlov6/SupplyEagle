@@ -7,8 +7,8 @@ pnpm + Turborepo monorepo. Node `>=22.12`.
 | Package | Path | Role |
 | --- | --- | --- |
 | `@supplyeagle/web` | `apps/web` | Vite React SPA, React Router, TanStack Query |
-| `@supplyeagle/api` | `apps/api` | NestJS HTTP API (`:3000`) |
-| `@supplyeagle/agents` | `apps/agents` | NestJS agents service (`:3001`) |
+| `@supplyeagle/api` | `apps/api` | NestJS HTTP API (`:8080`) |
+| `@supplyeagle/agents` | `apps/agents` | NestJS agents service (`:8081`) |
 
 Shared contracts: `@supplyeagle/types`. Shared TS config: `@supplyeagle/typescript-config`.
 
