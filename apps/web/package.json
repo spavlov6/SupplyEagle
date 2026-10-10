@@ -1,0 +1,30 @@
+{
+  "name": "@supplyeagle/web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@supplyeagle/types": "workspace:*",
+    "@tanstack/react-query": "^5.90.2",
+    "@tanstack/react-query-devtools": "^5.90.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router": "^7.9.4"
+  },
+  "devDependencies": {
+    "@supplyeagle/typescript-config": "workspace:*",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.0",
+    "eslint": "^9.37.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
+  }
+}

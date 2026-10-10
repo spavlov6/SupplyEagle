@@ -1,0 +1,14 @@
+---
+description: NestJS conventions for the API and agents apps
+globs: apps/api/**/*.ts,apps/agents/**/*.ts
+alwaysApply: false
+---
+
+# NestJS services
+
+- These apps are ESM. Local imports use `.js` specifiers (`./health.service.js`).
+- Add features as Nest modules. Import them from `AppModule`.
+- Keep global `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`, `transform`) and CORS from `CORS_ORIGIN`.
+- `GET /health` returns `HealthResponse` from `@supplyeagle/types`.
+- Use `import type` for `@supplyeagle/types`.
+- Mirror bootstrap/health/tsconfig changes across both Nest apps unless the difference is service name or port.

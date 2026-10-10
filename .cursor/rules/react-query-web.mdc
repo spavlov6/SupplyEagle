@@ -1,0 +1,14 @@
+---
+description: React Query and routing conventions for the web app
+globs: apps/web/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Web data fetching
+
+- `QueryClient` is created once in `src/lib/query-client.ts`.
+- Feature hooks call `apiClient`; components do not call `fetch`.
+- Query keys come from `src/lib/query-keys.ts`.
+- Type payloads with `@supplyeagle/types`.
+- Routes live in React Router (`App.tsx`). Do not fetch from the API in route loaders.
+- The web app talks only to `@supplyeagle/api` through `/api`.

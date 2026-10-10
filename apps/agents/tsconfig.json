@@ -1,0 +1,9 @@
+{
+  "extends": "@supplyeagle/typescript-config/nestjs.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": ".",
+    "types": ["vitest/globals", "node"]
+  },
+  "include": ["src", "test", "vitest.config.ts", "vitest.config.e2e.ts"]
+}

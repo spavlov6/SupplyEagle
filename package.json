@@ -1,0 +1,26 @@
+{
+  "name": "supplyeagle",
+  "private": true,
+  "packageManager": "pnpm@10.18.2",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:web": "turbo run dev --filter=@supplyeagle/web",
+    "dev:api": "turbo run dev --filter=@supplyeagle/api",
+    "dev:agents": "turbo run dev --filter=@supplyeagle/agents",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "check-types": "turbo run check-types",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.37.0",
+    "eslint": "^9.37.0",
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.8",
+    "typescript": "^6.0.2",
+    "typescript-eslint": "^8.46.0"
+  }
+}

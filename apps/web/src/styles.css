@@ -1,0 +1,119 @@
+:root {
+  color: #122017;
+  background: #f4f1ea;
+  font-family:
+    "Iowan Old Style", "Palatino Linotype", Palatino, "Times New Roman", serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.page {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 4rem 1.5rem;
+}
+
+.hero h1 {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 2.4rem;
+  letter-spacing: -0.03em;
+}
+
+.eyebrow {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #2f6a3a;
+}
+
+.lede {
+  margin: 0;
+  color: #3d4a40;
+  line-height: 1.5;
+}
+
+.lede code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+}
+
+.card {
+  margin-top: 2rem;
+  padding: 1.25rem 1.4rem;
+  background: #fffdf8;
+  border: 1px solid #d7d0c3;
+  border-radius: 12px;
+}
+
+.health {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+}
+
+.health div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.health dt {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #667066;
+}
+
+.health dd {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.status {
+  font-weight: 700;
+}
+
+.status.ok {
+  color: #1f7a3a;
+}
+
+.status.degraded {
+  color: #9a6b00;
+}
+
+.status.error,
+.status.unhealthy {
+  color: #a32626;
+}
+
+.detail {
+  color: #5c4a4a;
+}
+
+button {
+  margin-top: 0.75rem;
+  border: 1px solid #2f6a3a;
+  background: #2f6a3a;
+  color: #fffdf8;
+  border-radius: 8px;
+  padding: 0.5rem 0.85rem;
+  font: inherit;
+  cursor: pointer;
+}

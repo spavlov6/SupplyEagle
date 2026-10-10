@@ -1,0 +1,13 @@
+---
+description: Core SupplyEagle monorepo conventions
+alwaysApply: true
+---
+
+# SupplyEagle conventions
+
+- Apps: `@supplyeagle/web`, `@supplyeagle/api`, `@supplyeagle/agents`. Shared contracts: `@supplyeagle/types`.
+- Use pnpm workspaces + Turborepo. Do not enable Nest CLI monorepo mode.
+- Depend on workspace packages with `workspace:*`.
+- Keep imports at the top of the file. No inline imports.
+- Shared request/response types go in `packages/types` before they are used in more than one app.
+- Product HTTP belongs in `apps/api`. Agent workers belong in `apps/agents`.
