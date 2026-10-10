@@ -4,8 +4,10 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
 import { AuthModule } from '../src/auth/auth.module.js';
+import { PipelineModule } from '../src/pipeline/pipeline.module.js';
 import { RealtimeModule } from '../src/realtime/realtime.module.js';
 import { RedisService } from '../src/realtime/redis.service.js';
+import { RoutesModule } from '../src/routes/routes.module.js';
 import { SuppliersModule } from '../src/suppliers/suppliers.module.js';
 
 @Module({})
@@ -13,6 +15,12 @@ class EmptyAuthModule {}
 
 @Module({})
 class EmptySuppliersModule {}
+
+@Module({})
+class EmptyRoutesModule {}
+
+@Module({})
+class EmptyPipelineModule {}
 
 @Module({
   providers: [
@@ -39,8 +47,12 @@ describe('Health (e2e)', () => {
       .useModule(EmptyAuthModule)
       .overrideModule(SuppliersModule)
       .useModule(EmptySuppliersModule)
+      .overrideModule(RoutesModule)
+      .useModule(EmptyRoutesModule)
       .overrideModule(RealtimeModule)
       .useModule(FakeRealtimeModule)
+      .overrideModule(PipelineModule)
+      .useModule(EmptyPipelineModule)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -48,7 +60,7 @@ describe('Health (e2e)', () => {
   });
 
   afterEach(async () => {
-    await app.close();
+    await app?.close();
   });
 
   it('GET /health', async () => {

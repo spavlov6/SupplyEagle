@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module.js';
 import { HealthModule } from './health/health.module.js';
+import { PipelineModule } from './pipeline/pipeline.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
 import { RoutesModule } from './routes/routes.module.js';
 import { SuppliersModule } from './suppliers/suppliers.module.js';
@@ -17,6 +18,7 @@ import { SuppliersModule } from './suppliers/suppliers.module.js';
     RealtimeModule,
     SuppliersModule,
     RoutesModule,
+    PipelineModule,
   ],
 })
 export class AppModule {}
