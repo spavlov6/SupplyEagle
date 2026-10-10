@@ -48,6 +48,11 @@ export function RecommendationPage() {
                 Alternative: {item.alternativeSupplierName ?? 'Supplier'}
               </Link>
             ) : null}
+            {item.alternativeRouteId ? (
+              <Link to={`/routes/${item.alternativeRouteId}`}>
+                Alternative: {item.alternativeRouteLabel ?? 'Route'}
+              </Link>
+            ) : null}
           </p>
           {item.plan ? (
             <ol>

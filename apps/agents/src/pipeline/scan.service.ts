@@ -23,7 +23,9 @@ import {
   draftRecommendations,
   executionPlan,
   headlinesFromFacts,
+  recommendationCopyId,
   isActiveAlert,
+  type DraftRecommendation,
   type OpenAlert,
 } from './decide.js';
 import { AlertRecord } from './entities/alert.entity.js';
@@ -359,24 +361,29 @@ export class ScanService {
     }
 
     await this.mark(run, 'decision', 'running', null);
-    const { drafts } = draftRecommendations(context);
+    const covered = await this.recommendations.find({
+      where: { userId: run.userId, type: 'switch_route' },
+    });
+    const { drafts } = draftRecommendations({
+      ...context,
+      coveredRouteIds: covered.flatMap((row) =>
+        row.routeId ? [row.routeId] : [],
+      ),
+    });
     const phrased = await this.claude.recommendations(
       drafts.map((draft) => ({
-        id: draft.alertId,
+        id: recommendationCopyId(draft),
         title: draft.title,
         description: draft.description,
       })),
     );
     let written = 0;
     for (const draft of drafts) {
-      const existing = await this.recommendations.findOne({
-        where: { alertId: draft.alertId },
-      });
-      if (existing) {
+      if (await this.recommendationExists(run.userId, draft)) {
         continue;
       }
 
-      const copy = phrased.get(draft.alertId);
+      const copy = phrased.get(recommendationCopyId(draft));
       const saved = await this.recommendations.save(
         this.recommendations.create({
           userId: run.userId,
@@ -390,10 +397,13 @@ export class ScanService {
           supplierId: draft.supplierId,
           routeId: draft.routeId,
           alternativeSupplierId: draft.alternativeSupplierId,
+          alternativeRouteId: draft.alternativeRouteId,
           plan: null,
         }),
       );
-      await this.alerts.update(draft.alertId, { recommendationId: saved.id });
+      if (draft.alertId) {
+        await this.alerts.update(draft.alertId, { recommendationId: saved.id });
+      }
       written += 1;
       await this.events.publish({
         type: 'recommendation.created',
@@ -410,6 +420,27 @@ export class ScanService {
         ? 'Wrote 1 recommendation.'
         : `Wrote ${written} recommendations.`,
     );
+  }
+
+  private async recommendationExists(
+    userId: string,
+    draft: DraftRecommendation,
+  ): Promise<boolean> {
+    if (draft.alertId) {
+      const byAlert = await this.recommendations.findOne({
+        where: { alertId: draft.alertId },
+      });
+      return byAlert !== null;
+    }
+
+    if (draft.type !== 'switch_route' || !draft.routeId) {
+      return false;
+    }
+
+    const byRoute = await this.recommendations.findOne({
+      where: { userId, type: 'switch_route', routeId: draft.routeId },
+    });
+    return byRoute !== null;
   }
 
   private async plan(run: PipelineRun): Promise<void> {
@@ -448,6 +479,9 @@ export class ScanService {
       id: string;
       origin: string;
       destination: string;
+      mode: Route['mode'];
+      riskState: RouteAssessment['riskState'];
+      laneStatus: RouteAssessment['laneStatus'];
       supplierIds: string[];
     }>;
   }> {
@@ -467,7 +501,7 @@ export class ScanService {
     }
     const routes = await this.routes.find({
       where: { userId: run.userId },
-      relations: { links: true },
+      relations: { links: true, assessments: true },
     });
 
     return {
@@ -491,12 +525,18 @@ export class ScanService {
           status: analysis?.status ?? null,
         };
       }),
-      routes: routes.map((route) => ({
-        id: route.id,
-        origin: route.origin,
-        destination: route.destination,
-        supplierIds: (route.links ?? []).map((link) => link.supplierId),
-      })),
+      routes: routes.map((route) => {
+        const assessment = latestByDate(route.assessments ?? []);
+        return {
+          id: route.id,
+          origin: route.origin,
+          destination: route.destination,
+          mode: route.mode,
+          riskState: assessment?.riskState ?? null,
+          laneStatus: assessment?.laneStatus ?? null,
+          supplierIds: (route.links ?? []).map((link) => link.supplierId),
+        };
+      }),
     };
   }
 

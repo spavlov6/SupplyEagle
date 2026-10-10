@@ -1,5 +1,5 @@
 export type RecommendationType =
-  'switch_supplier' | 'diversify' | 'investigate';
+  'switch_supplier' | 'diversify' | 'switch_route' | 'investigate';
 
 export type RecommendationStatus = 'pending' | 'accepted' | 'dismissed';
 
@@ -20,6 +20,8 @@ export type Recommendation = {
   routeLabel: string | null;
   alternativeSupplierId: string | null;
   alternativeSupplierName: string | null;
+  alternativeRouteId: string | null;
+  alternativeRouteLabel: string | null;
   plan: RecommendationPlan | null;
   alertId: string | null;
   createdAt: string;

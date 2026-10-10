@@ -7,9 +7,11 @@ import type {
   AnalysisStatus,
   MonitoredHeadline,
   RecommendationPlan,
+  LaneStatus,
   RecommendationType,
   RiskState,
   RouteBaseline,
+  ShippingMode,
   RouteSourceFacts,
   ScanBaseline,
   SupplierBaseline,
@@ -44,6 +46,9 @@ export type RouteRef = {
   id: string;
   origin: string;
   destination: string;
+  mode: ShippingMode;
+  riskState: RiskState | null;
+  laneStatus: LaneStatus | null;
   supplierIds: string[];
 };
 
@@ -52,7 +57,7 @@ export type OpenAlert = AlertDraft & {
 };
 
 export type DraftRecommendation = {
-  alertId: string;
+  alertId: string | null;
   type: RecommendationType;
   priority: number;
   title: string;
@@ -60,6 +65,7 @@ export type DraftRecommendation = {
   supplierId: string | null;
   routeId: string | null;
   alternativeSupplierId: string | null;
+  alternativeRouteId: string | null;
 };
 
 export function riskRank(state: RiskState | null): number {
@@ -241,6 +247,7 @@ export function draftRecommendations(input: {
   alerts: OpenAlert[];
   suppliers: SupplierCandidate[];
   routes: RouteRef[];
+  coveredRouteIds?: string[];
 }): { drafts: DraftRecommendation[]; finderSummary: string } {
   const routes = new Map(input.routes.map((route) => [route.id, route]));
   const flagged = new Set<string>();
@@ -276,7 +283,38 @@ export function draftRecommendations(input: {
     }
   }
 
+  const switched = new Set(
+    drafts
+      .map((draft) => (draft.type === 'switch_route' ? draft.routeId : null))
+      .filter((routeId): routeId is string => routeId !== null),
+  );
+  const covered = new Set(input.coveredRouteIds ?? []);
+  for (const route of input.routes) {
+    if (
+      switched.has(route.id) ||
+      covered.has(route.id) ||
+      !holdsVolume(route)
+    ) {
+      continue;
+    }
+    const alternative = pickAlternativeRoute(input.routes, route.id);
+    if (!alternative) {
+      continue;
+    }
+    drafts.push(
+      routeSwitchDraft(null, route, alternative, standingLead(route)),
+    );
+    switched.add(route.id);
+  }
+
   return { drafts, finderSummary };
+}
+
+export function recommendationCopyId(draft: DraftRecommendation): string {
+  return (
+    draft.alertId ??
+    `route-${draft.routeId ?? draft.alternativeRouteId ?? 'switch'}`
+  );
 }
 
 export function executionPlan(type: RecommendationType): RecommendationPlan {
@@ -294,6 +332,14 @@ export function executionPlan(type: RecommendationType): RecommendationPlan {
         steps: [
           'Confirm the sanctions evidence on the current supplier.',
           'Add another checked supplier to this account before moving volume.',
+          'Record the outcome on the recommendation.',
+        ],
+      };
+    case 'switch_route':
+      return {
+        steps: [
+          'Confirm the evidence on the current lane.',
+          'Decide whether to move volume onto the named route already on this account.',
           'Record the outcome on the recommendation.',
         ],
       };
@@ -340,6 +386,20 @@ export function pickAlternative(
   return eligible[0] ?? null;
 }
 
+export function pickAlternativeRoute(
+  routes: RouteRef[],
+  routeId: string,
+): RouteRef | null {
+  const current = routes.find((route) => route.id === routeId);
+  if (!current) {
+    return null;
+  }
+
+  const eligible = routes.filter((route) => isAlternativeRoute(current, route));
+  eligible.sort((left, right) => compareAlternatives(current, left, right));
+  return eligible[0] ?? null;
+}
+
 function draftForAlert(
   alert: OpenAlert,
   alternatives: Map<string, SupplierCandidate | null>,
@@ -365,6 +425,7 @@ function draftForAlert(
         supplierId: alert.supplierId,
         routeId: null,
         alternativeSupplierId: alternative.id,
+        alternativeRouteId: null,
       };
     }
 
@@ -377,6 +438,7 @@ function draftForAlert(
       supplierId: alert.supplierId,
       routeId: null,
       alternativeSupplierId: null,
+      alternativeRouteId: null,
     };
   }
 
@@ -391,13 +453,23 @@ function draftForAlert(
     alert.type === 'risk_increase'
   ) {
     const route = alert.routeId ? routes.get(alert.routeId) : undefined;
+    const lane = route ? laneLabel(route) : 'This lane';
+    const alternativeRoute = alert.routeId
+      ? pickAlternativeRoute([...routes.values()], alert.routeId)
+      : null;
+    if (alternativeRoute && route) {
+      return routeSwitchDraft(
+        alert.id,
+        route,
+        alternativeRoute,
+        alert.description,
+      );
+    }
+
     const linked = route?.supplierIds ?? [];
     const alternative = linked
       .map((supplierId) => alternatives.get(supplierId) ?? null)
       .find((candidate): candidate is SupplierCandidate => candidate !== null);
-    const lane = route
-      ? `${route.origin} to ${route.destination}`
-      : 'This lane';
     const priority = alert.severity === 'elevated' ? 3 : 4;
     const extra = alternative
       ? ` ${alternative.name} is a tracked supplier that is not sanctioned.`
@@ -411,11 +483,151 @@ function draftForAlert(
       supplierId: null,
       routeId: alert.routeId,
       alternativeSupplierId: null,
+      alternativeRouteId: null,
     };
   }
 
   const unexpected: never = alert.type;
   return unexpected;
+}
+
+function routeSwitchDraft(
+  alertId: string | null,
+  route: RouteRef,
+  alternative: RouteRef,
+  lead: string,
+): DraftRecommendation {
+  const lane = laneLabel(route);
+  const moved = `${laneLabel(alternative)} by ${modeWord(alternative.mode)}`;
+  const sameEnds = sameLaneEnds(route, alternative);
+  return {
+    alertId,
+    type: 'switch_route',
+    priority: 4,
+    title: sameEnds
+      ? `Ship ${lane} by ${modeWord(alternative.mode)} instead`
+      : `Use ${laneLabel(alternative)} instead of ${lane}`,
+    description: `${lead} ${moved} is already on this account and is ${usableRisk(alternative)}.`,
+    supplierId: null,
+    routeId: route.id,
+    alternativeSupplierId: null,
+    alternativeRouteId: alternative.id,
+  };
+}
+
+function holdsVolume(route: RouteRef): boolean {
+  if (route.laneStatus === 'disrupted') {
+    return true;
+  }
+  return route.riskState === 'elevated' || route.riskState === 'critical';
+}
+
+function standingLead(route: RouteRef): string {
+  const lane = laneLabel(route);
+  if (route.laneStatus === 'disrupted') {
+    return `${lane} is disrupted.`;
+  }
+  return `${lane} is ${route.riskState}.`;
+}
+
+function isAlternativeRoute(current: RouteRef, candidate: RouteRef): boolean {
+  if (candidate.id === current.id || !usableRisk(candidate)) {
+    return false;
+  }
+  if (
+    current.riskState &&
+    riskRank(candidate.riskState) >= riskRank(current.riskState)
+  ) {
+    return false;
+  }
+  return relatedLane(current, candidate);
+}
+
+function usableRisk(route: RouteRef): 'stable' | 'watch' | null {
+  if (route.laneStatus !== 'active') {
+    return null;
+  }
+  if (route.riskState === 'stable' || route.riskState === 'watch') {
+    return route.riskState;
+  }
+  return null;
+}
+
+function relatedLane(current: RouteRef, candidate: RouteRef): boolean {
+  return (
+    sameLaneEnds(current, candidate) ||
+    sharesSupplier(current, candidate) ||
+    samePlace(current.origin, candidate.origin) ||
+    samePlace(current.destination, candidate.destination)
+  );
+}
+
+function compareAlternatives(
+  current: RouteRef,
+  left: RouteRef,
+  right: RouteRef,
+): number {
+  const group =
+    alternativeGroup(current, left) - alternativeGroup(current, right);
+  if (group !== 0) {
+    return group;
+  }
+
+  const risk = riskRank(left.riskState) - riskRank(right.riskState);
+  if (risk !== 0) {
+    return risk;
+  }
+
+  const byName = laneLabel(left).localeCompare(laneLabel(right));
+  if (byName !== 0) {
+    return byName;
+  }
+
+  return left.id.localeCompare(right.id);
+}
+
+function alternativeGroup(current: RouteRef, candidate: RouteRef): number {
+  if (sameLaneEnds(current, candidate)) {
+    return 0;
+  }
+  if (sharesSupplier(current, candidate)) {
+    return 1;
+  }
+  return 2;
+}
+
+function sameLaneEnds(left: RouteRef, right: RouteRef): boolean {
+  return (
+    samePlace(left.origin, right.origin) &&
+    samePlace(left.destination, right.destination)
+  );
+}
+
+function sharesSupplier(left: RouteRef, right: RouteRef): boolean {
+  return left.supplierIds.some((supplierId) =>
+    right.supplierIds.includes(supplierId),
+  );
+}
+
+function samePlace(left: string, right: string): boolean {
+  return left.trim().toLowerCase() === right.trim().toLowerCase();
+}
+
+function laneLabel(route: RouteRef): string {
+  return `${route.origin} to ${route.destination}`;
+}
+
+function modeWord(mode: ShippingMode): string {
+  switch (mode) {
+    case 'air':
+      return 'air';
+    case 'sea':
+      return 'sea';
+    default: {
+      const unexpected: never = mode;
+      return unexpected;
+    }
+  }
 }
 
 function isLaneAlert(type: AlertType): boolean {

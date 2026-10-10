@@ -53,6 +53,9 @@ export class RecommendationRecord {
   @Column({ type: 'uuid', nullable: true })
   alternativeSupplierId: string | null;
 
+  @Column({ type: 'uuid', nullable: true })
+  alternativeRouteId: string | null;
+
   @Column({ type: 'jsonb', nullable: true })
   plan: RecommendationPlan | null;
 

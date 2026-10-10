@@ -96,6 +96,7 @@ export class RecommendationsService {
         supplierId: alert.supplierId,
         routeId: alert.routeId,
         alternativeSupplierId: null,
+        alternativeRouteId: null,
         plan: INVESTIGATE_PLAN,
       }),
     );
@@ -135,7 +136,9 @@ export class RecommendationsService {
     const supplierIds = unique(
       rows.flatMap((row) => [row.supplierId, row.alternativeSupplierId]),
     );
-    const routeIds = unique(rows.map((row) => row.routeId));
+    const routeIds = unique(
+      rows.flatMap((row) => [row.routeId, row.alternativeRouteId]),
+    );
     const suppliers =
       supplierIds.length === 0
         ? []
@@ -152,6 +155,9 @@ export class RecommendationsService {
         route.id,
         `${route.origin} to ${route.destination}`,
       ]),
+    );
+    const alternativeRouteLabel = new Map(
+      routes.map((route) => [route.id, routeChoiceLabel(route)]),
     );
 
     return rows.map((row) => ({
@@ -170,6 +176,10 @@ export class RecommendationsService {
       alternativeSupplierId: row.alternativeSupplierId,
       alternativeSupplierName: row.alternativeSupplierId
         ? (supplierName.get(row.alternativeSupplierId) ?? null)
+        : null,
+      alternativeRouteId: row.alternativeRouteId,
+      alternativeRouteLabel: row.alternativeRouteId
+        ? (alternativeRouteLabel.get(row.alternativeRouteId) ?? null)
         : null,
       plan: row.plan,
       alertId: row.alertId,
@@ -196,4 +206,21 @@ function unique(values: Array<string | null>): string[] {
   return [
     ...new Set(values.filter((value): value is string => value !== null)),
   ];
+}
+
+function routeChoiceLabel(route: Route): string {
+  return `${route.origin} to ${route.destination} by ${routeMode(route.mode)}`;
+}
+
+function routeMode(mode: Route['mode']): string {
+  switch (mode) {
+    case 'air':
+      return 'air';
+    case 'sea':
+      return 'sea';
+    default: {
+      const unexpected: never = mode;
+      return unexpected;
+    }
+  }
 }

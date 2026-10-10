@@ -16,6 +16,8 @@ import type { ScanBaseline } from '@supplyeagle/types';
 const supplierId = '11111111-1111-1111-1111-111111111111';
 const otherId = '22222222-2222-2222-2222-222222222222';
 const routeId = '33333333-3333-3333-3333-333333333333';
+const otherRouteId = '44444444-4444-4444-4444-444444444444';
+const thirdRouteId = '55555555-5555-5555-5555-555555555555';
 
 function baseline(overrides: Partial<ScanBaseline> = {}): ScanBaseline {
   return {
@@ -156,6 +158,9 @@ describe('draftRecommendations', () => {
       id: routeId,
       origin: 'Hamburg',
       destination: 'Rotterdam',
+      mode: 'sea',
+      riskState: 'elevated',
+      laneStatus: 'active',
       supplierIds: [supplierId],
     },
   ];
@@ -170,6 +175,32 @@ describe('draftRecommendations', () => {
       supplierId,
       routeId: null,
       sourceKey: `sanctions-${supplierId}`,
+    };
+  }
+
+  function laneRef(overrides: Partial<RouteRef> = {}): RouteRef {
+    return {
+      id: routeId,
+      origin: 'Hamburg',
+      destination: 'Rotterdam',
+      mode: 'sea',
+      riskState: 'elevated',
+      laneStatus: 'active',
+      supplierIds: [supplierId],
+      ...overrides,
+    };
+  }
+
+  function laneAlert(): OpenAlert {
+    return {
+      id: 'alert-lane',
+      type: 'risk_increase',
+      severity: 'elevated',
+      title: 'Elevated',
+      description: 'Risk moved from stable to elevated.',
+      supplierId: null,
+      routeId,
+      sourceKey: 'risk',
     };
   }
 
@@ -246,7 +277,192 @@ describe('draftRecommendations', () => {
     expect(
       draftRecommendations({ alerts: [elevated], suppliers: [], routes })
         .drafts[0],
-    ).toMatchObject({ type: 'investigate', priority: 3, routeId });
+    ).toMatchObject({
+      type: 'investigate',
+      priority: 3,
+      routeId,
+      alternativeRouteId: null,
+    });
+  });
+
+  it('switches a troubled lane onto a stable route with the same ends', () => {
+    const drafted = draftRecommendations({
+      alerts: [laneAlert()],
+      suppliers: [],
+      routes: [
+        routes[0] ?? laneRef(),
+        laneRef({
+          id: otherRouteId,
+          mode: 'air',
+          riskState: 'stable',
+        }),
+      ],
+    });
+
+    expect(drafted.drafts[0]).toMatchObject({
+      type: 'switch_route',
+      priority: 4,
+      routeId,
+      alternativeSupplierId: null,
+      alternativeRouteId: otherRouteId,
+      title: 'Ship Hamburg to Rotterdam by air instead',
+      description:
+        'Risk moved from stable to elevated. Hamburg to Rotterdam by air is already on this account and is stable.',
+    });
+    expect(drafted.drafts).toHaveLength(1);
+  });
+
+  it('prefers the same ends over a quieter lane that only shares a port', () => {
+    const drafted = draftRecommendations({
+      alerts: [laneAlert()],
+      suppliers: [],
+      routes: [
+        laneRef({ mode: 'air' }),
+        laneRef({
+          id: otherRouteId,
+          mode: 'sea',
+          riskState: 'watch',
+        }),
+        laneRef({
+          id: thirdRouteId,
+          origin: 'Hamburg',
+          destination: 'Oslo',
+          riskState: 'stable',
+          supplierIds: [],
+        }),
+      ],
+    });
+
+    expect(drafted.drafts[0]?.alternativeRouteId).toBe(otherRouteId);
+  });
+
+  it('prefers a stable shared supplier over a watch shared supplier', () => {
+    const drafted = draftRecommendations({
+      alerts: [laneAlert()],
+      suppliers: [],
+      routes: [
+        laneRef({ origin: 'Shanghai', destination: 'Hamburg' }),
+        laneRef({
+          id: otherRouteId,
+          origin: 'Oslo',
+          destination: 'Helsinki',
+          riskState: 'watch',
+        }),
+        laneRef({
+          id: thirdRouteId,
+          origin: 'Busan',
+          destination: 'Genoa',
+          riskState: 'stable',
+        }),
+      ],
+    });
+
+    expect(drafted.drafts[0]?.alternativeRouteId).toBe(thirdRouteId);
+  });
+
+  it('keeps a review when no safer related lane is on the account', () => {
+    const drafted = draftRecommendations({
+      alerts: [laneAlert()],
+      suppliers: [],
+      routes: [
+        routes[0] ?? laneRef(),
+        laneRef({
+          id: otherRouteId,
+          origin: 'Tokyo',
+          destination: 'Los Angeles',
+          riskState: 'stable',
+          supplierIds: [otherId],
+        }),
+        laneRef({
+          id: thirdRouteId,
+          mode: 'air',
+          riskState: 'critical',
+          laneStatus: 'disrupted',
+        }),
+      ],
+    });
+
+    expect(drafted.drafts[0]).toMatchObject({
+      type: 'investigate',
+      alternativeRouteId: null,
+    });
+  });
+
+  it('recommends a safer lane that is already on the account without a new alert', () => {
+    const drafted = draftRecommendations({
+      alerts: [],
+      suppliers: [],
+      routes: [
+        laneRef({
+          origin: 'Shanghai',
+          destination: 'Rotterdam',
+          riskState: 'elevated',
+        }),
+        laneRef({
+          id: otherRouteId,
+          origin: 'Hamburg',
+          destination: 'Rotterdam',
+          riskState: 'watch',
+          supplierIds: [otherId],
+        }),
+        laneRef({
+          id: thirdRouteId,
+          origin: 'Beijing',
+          destination: 'New York',
+          mode: 'air',
+          riskState: 'elevated',
+        }),
+      ],
+    });
+
+    expect(drafted.drafts).toEqual([
+      expect.objectContaining({
+        alertId: null,
+        type: 'switch_route',
+        routeId,
+        alternativeRouteId: otherRouteId,
+        title: 'Use Hamburg to Rotterdam instead of Shanghai to Rotterdam',
+        description:
+          'Shanghai to Rotterdam is elevated. Hamburg to Rotterdam by sea is already on this account and is watch.',
+      }),
+    ]);
+  });
+
+  it('does not repeat a route switch that was already recommended', () => {
+    const routes = [
+      laneRef({ riskState: 'elevated' }),
+      laneRef({
+        id: otherRouteId,
+        mode: 'air',
+        riskState: 'stable',
+      }),
+    ];
+
+    expect(
+      draftRecommendations({
+        alerts: [],
+        suppliers: [],
+        routes,
+        coveredRouteIds: [routeId],
+      }).drafts,
+    ).toEqual([]);
+  });
+
+  it('does not switch a watch lane onto a quieter one', () => {
+    expect(
+      draftRecommendations({
+        alerts: [],
+        suppliers: [],
+        routes: [
+          laneRef({ riskState: 'watch' }),
+          laneRef({
+            id: otherRouteId,
+            mode: 'air',
+            riskState: 'stable',
+          }),
+        ],
+      }).drafts,
+    ).toEqual([]);
   });
 });
 
@@ -276,5 +492,6 @@ describe('schedule and plans', () => {
     );
     expect(executionPlan('investigate').steps).toHaveLength(3);
     expect(executionPlan('switch_supplier').steps).toHaveLength(3);
+    expect(executionPlan('switch_route').steps).toHaveLength(3);
   });
 });

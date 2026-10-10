@@ -74,6 +74,13 @@ export class Recommendation {
   @JoinColumn({ name: 'alternativeSupplierId' })
   alternativeSupplier?: Supplier | null;
 
+  @Column({ type: 'uuid', nullable: true })
+  alternativeRouteId: string | null;
+
+  @ManyToOne(() => Route, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'alternativeRouteId' })
+  alternativeRoute?: Route | null;
+
   @Column({ type: 'jsonb', nullable: true })
   plan: RecommendationPlan | null;
 

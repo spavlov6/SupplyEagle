@@ -59,6 +59,17 @@ export function ScanDrawer({
           ]
         : [],
     ),
+    ...recommendationRows.flatMap((item) =>
+      item.alternativeRouteId
+        ? [
+            {
+              id: item.alternativeRouteId,
+              label: item.alternativeRouteLabel ?? 'Alternative route',
+              to: `/routes/${item.alternativeRouteId}`,
+            },
+          ]
+        : [],
+    ),
   ]);
 
   return (
