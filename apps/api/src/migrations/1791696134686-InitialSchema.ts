@@ -1,0 +1,123 @@
+import { MigrationInterface, QueryRunner } from "typeorm";
+
+export class InitialSchema1791696134686 implements MigrationInterface {
+    name = 'InitialSchema1791696134686'
+
+    public async up(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+        await queryRunner.query(`CREATE TABLE "users" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "email" character varying NOT NULL, "passwordHash" character varying NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "UQ_97672ac88f789774dd47f7c8be3" UNIQUE ("email"), CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "routes" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "userId" uuid NOT NULL, "origin" character varying(200) NOT NULL, "destination" character varying(200) NOT NULL, "mode" character varying(8) NOT NULL, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_76100511cdfa1d013c859f01d8b" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_bb4cd0199dd9a8c1438d0bff91" ON "routes"  ("userId") `);
+        await queryRunner.query(`CREATE TABLE "suppliers" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "userId" uuid NOT NULL, "name" character varying(200) NOT NULL, "country" character varying(80), "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_b70ac51766a9e3144f778cfe81e" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_8b6a94866e7d6ac179bbb67a1f" ON "suppliers"  ("userId") `);
+        await queryRunner.query(`CREATE TABLE "alerts" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "userId" uuid NOT NULL, "type" character varying(32) NOT NULL, "severity" character varying(20) NOT NULL, "title" character varying(200) NOT NULL, "description" text NOT NULL, "status" character varying(20) NOT NULL, "supplierId" uuid, "routeId" uuid, "sourceKey" character varying(160) NOT NULL, "recommendationId" uuid, "runId" uuid, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_60f895662df096bfcdfab7f4b96" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_f2678f7b11e5128abbbc451190" ON "alerts"  ("userId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_b63189bf8e5abf5b9188acca96" ON "alerts"  ("status") `);
+        await queryRunner.query(`CREATE INDEX "IDX_c799ee43ab13cc816f0a6e9f56" ON "alerts"  ("sourceKey") `);
+        await queryRunner.query(`CREATE INDEX "IDX_3ae546170bd6f990e0c32016ce" ON "alerts"  ("runId") `);
+        await queryRunner.query(`CREATE TABLE "place_locations" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "query" character varying(200) NOT NULL, "lat" double precision NOT NULL, "lon" double precision NOT NULL, "country" character varying(80), "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "UQ_fd4cc7646097f2978f9026c6cc5" UNIQUE ("query"), CONSTRAINT "PK_df3c4488c340efeccfaa16ac134" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "pipeline_runs" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "userId" uuid NOT NULL, "status" character varying(20) NOT NULL, "startedAt" TIMESTAMP WITH TIME ZONE, "completedAt" TIMESTAMP WITH TIME ZONE, "baseline" jsonb, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_485786394df8fcdcbdbcdaedda3" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_e2020a851bfbd51e1bb09d03de" ON "pipeline_runs"  ("userId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_2fb85e489c7b9414220028cf6d" ON "pipeline_runs"  ("status") `);
+        await queryRunner.query(`CREATE TABLE "pipeline_schedules" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "userId" uuid NOT NULL, "enabled" boolean NOT NULL DEFAULT true, "hour" integer NOT NULL, "minute" integer NOT NULL, "timezone" character varying(80) NOT NULL, "nextRunAt" TIMESTAMP WITH TIME ZONE, "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_e72f830b19ca8deaa5c5d7f3cf8" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE UNIQUE INDEX "IDX_c1ea0de4c41947b3f2a03934d1" ON "pipeline_schedules"  ("userId") `);
+        await queryRunner.query(`CREATE TABLE "pipeline_stages" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "runId" uuid NOT NULL, "agentName" character varying(32) NOT NULL, "status" character varying(20) NOT NULL, "summary" text, "error" text, "startedAt" TIMESTAMP WITH TIME ZONE, "completedAt" TIMESTAMP WITH TIME ZONE, CONSTRAINT "pipeline_stages_run_agent" UNIQUE ("runId", "agentName"), CONSTRAINT "PK_92e43270eace072ad5182fc08e2" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_518d9b35158dfa67dd4e76f0f3" ON "pipeline_stages"  ("runId") `);
+        await queryRunner.query(`CREATE TABLE "recommendations" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "userId" uuid NOT NULL, "alertId" uuid, "runId" uuid, "type" character varying(32) NOT NULL, "title" character varying(200) NOT NULL, "description" text NOT NULL, "priority" integer NOT NULL, "status" character varying(20) NOT NULL, "supplierId" uuid, "routeId" uuid, "alternativeSupplierId" uuid, "alternativeRouteId" uuid, "plan" jsonb, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_23a8d2db26db8cabb6ae9d6cd87" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_fe2bbafb624389915b622d3304" ON "recommendations"  ("userId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_f42c49560bb6a09c97ba7ca62e" ON "recommendations"  ("runId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_6ec2d9917e55967f8a67b9a460" ON "recommendations"  ("status") `);
+        await queryRunner.query(`CREATE TABLE "route_assessments" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "routeId" uuid NOT NULL, "userId" uuid NOT NULL, "status" character varying(20) NOT NULL, "riskState" character varying(20), "laneStatus" character varying(20), "transitDays" integer, "why" character varying(300), "summary" text, "factsHash" character varying(64), "error" text, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_6509b85809b8a524d5d60838dc2" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_390a98f46c8e15729e471be4da" ON "route_assessments"  ("routeId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_13641c9916fe942ea46a59adc4" ON "route_assessments"  ("userId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_546cc405170bc7cd06611fce4a" ON "route_assessments"  ("status") `);
+        await queryRunner.query(`CREATE TABLE "route_source_checks" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "analysisId" uuid NOT NULL, "source" character varying(32) NOT NULL, "status" character varying(20) NOT NULL, "label" character varying(300), "url" character varying(500), "facts" jsonb, "error" text, CONSTRAINT "PK_bbede09b303859b43855d110248" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_25b72091f0e133b40a3cb43534" ON "route_source_checks"  ("analysisId") `);
+        await queryRunner.query(`CREATE TABLE "route_suppliers" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "routeId" uuid NOT NULL, "supplierId" uuid NOT NULL, CONSTRAINT "route_suppliers_route_id_supplier_id" UNIQUE ("routeId", "supplierId"), CONSTRAINT "PK_a9e131e4a34a6885ed42cfee231" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_0aebc42f7e1ec3248073e7d9d7" ON "route_suppliers"  ("routeId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_9b901ef33670c11e7d84eec900" ON "route_suppliers"  ("supplierId") `);
+        await queryRunner.query(`CREATE TABLE "supplier_analyses" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "supplierId" uuid NOT NULL, "userId" uuid NOT NULL, "status" character varying(20) NOT NULL, "confidence" character varying(20), "summary" text, "legalName" character varying(300), "country" character varying(80), "sanctionsHit" boolean, "factsHash" character varying(64), "error" text, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_3750b109eb300a286e07ca05b57" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_c6760051455719a4d39f812942" ON "supplier_analyses"  ("supplierId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_a2c2317d3ad3a24fd63f9ed877" ON "supplier_analyses"  ("userId") `);
+        await queryRunner.query(`CREATE TABLE "supplier_source_checks" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "analysisId" uuid NOT NULL, "source" character varying(32) NOT NULL, "status" character varying(20) NOT NULL, "label" character varying(300), "url" character varying(500), "facts" jsonb, "error" text, CONSTRAINT "PK_60e2a4dba5e76082fa63c57e323" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_d0e30c5d7ac0a55e2904e30d30" ON "supplier_source_checks"  ("analysisId") `);
+        await queryRunner.query(`ALTER TABLE "routes" ADD CONSTRAINT "FK_bb4cd0199dd9a8c1438d0bff91d" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "suppliers" ADD CONSTRAINT "FK_8b6a94866e7d6ac179bbb67a1f8" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "alerts" ADD CONSTRAINT "FK_f2678f7b11e5128abbbc4511906" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "alerts" ADD CONSTRAINT "FK_dda35567a2a444a882a23f13107" FOREIGN KEY ("supplierId") REFERENCES "suppliers"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "alerts" ADD CONSTRAINT "FK_fb1c974e5355df5dd194563ac62" FOREIGN KEY ("routeId") REFERENCES "routes"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "pipeline_runs" ADD CONSTRAINT "FK_e2020a851bfbd51e1bb09d03ded" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "pipeline_schedules" ADD CONSTRAINT "FK_c1ea0de4c41947b3f2a03934d14" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "pipeline_stages" ADD CONSTRAINT "FK_518d9b35158dfa67dd4e76f0f39" FOREIGN KEY ("runId") REFERENCES "pipeline_runs"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "recommendations" ADD CONSTRAINT "FK_fe2bbafb624389915b622d33041" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "recommendations" ADD CONSTRAINT "FK_b41968613f302a02066144c5736" FOREIGN KEY ("supplierId") REFERENCES "suppliers"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "recommendations" ADD CONSTRAINT "FK_478ad8025d4864c31ddf64eccd7" FOREIGN KEY ("routeId") REFERENCES "routes"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "recommendations" ADD CONSTRAINT "FK_f63e65cd605febaf84bf27629ea" FOREIGN KEY ("alternativeSupplierId") REFERENCES "suppliers"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "recommendations" ADD CONSTRAINT "FK_1e1b603474563bae5e08e46c147" FOREIGN KEY ("alternativeRouteId") REFERENCES "routes"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "route_assessments" ADD CONSTRAINT "FK_390a98f46c8e15729e471be4dab" FOREIGN KEY ("routeId") REFERENCES "routes"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "route_source_checks" ADD CONSTRAINT "FK_25b72091f0e133b40a3cb435345" FOREIGN KEY ("analysisId") REFERENCES "route_assessments"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "route_suppliers" ADD CONSTRAINT "FK_0aebc42f7e1ec3248073e7d9d7e" FOREIGN KEY ("routeId") REFERENCES "routes"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "route_suppliers" ADD CONSTRAINT "FK_9b901ef33670c11e7d84eec9003" FOREIGN KEY ("supplierId") REFERENCES "suppliers"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "supplier_analyses" ADD CONSTRAINT "FK_c6760051455719a4d39f8129426" FOREIGN KEY ("supplierId") REFERENCES "suppliers"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "supplier_source_checks" ADD CONSTRAINT "FK_d0e30c5d7ac0a55e2904e30d30a" FOREIGN KEY ("analysisId") REFERENCES "supplier_analyses"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+    }
+
+    public async down(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`ALTER TABLE "supplier_source_checks" DROP CONSTRAINT "FK_d0e30c5d7ac0a55e2904e30d30a"`);
+        await queryRunner.query(`ALTER TABLE "supplier_analyses" DROP CONSTRAINT "FK_c6760051455719a4d39f8129426"`);
+        await queryRunner.query(`ALTER TABLE "route_suppliers" DROP CONSTRAINT "FK_9b901ef33670c11e7d84eec9003"`);
+        await queryRunner.query(`ALTER TABLE "route_suppliers" DROP CONSTRAINT "FK_0aebc42f7e1ec3248073e7d9d7e"`);
+        await queryRunner.query(`ALTER TABLE "route_source_checks" DROP CONSTRAINT "FK_25b72091f0e133b40a3cb435345"`);
+        await queryRunner.query(`ALTER TABLE "route_assessments" DROP CONSTRAINT "FK_390a98f46c8e15729e471be4dab"`);
+        await queryRunner.query(`ALTER TABLE "recommendations" DROP CONSTRAINT "FK_1e1b603474563bae5e08e46c147"`);
+        await queryRunner.query(`ALTER TABLE "recommendations" DROP CONSTRAINT "FK_f63e65cd605febaf84bf27629ea"`);
+        await queryRunner.query(`ALTER TABLE "recommendations" DROP CONSTRAINT "FK_478ad8025d4864c31ddf64eccd7"`);
+        await queryRunner.query(`ALTER TABLE "recommendations" DROP CONSTRAINT "FK_b41968613f302a02066144c5736"`);
+        await queryRunner.query(`ALTER TABLE "recommendations" DROP CONSTRAINT "FK_fe2bbafb624389915b622d33041"`);
+        await queryRunner.query(`ALTER TABLE "pipeline_stages" DROP CONSTRAINT "FK_518d9b35158dfa67dd4e76f0f39"`);
+        await queryRunner.query(`ALTER TABLE "pipeline_schedules" DROP CONSTRAINT "FK_c1ea0de4c41947b3f2a03934d14"`);
+        await queryRunner.query(`ALTER TABLE "pipeline_runs" DROP CONSTRAINT "FK_e2020a851bfbd51e1bb09d03ded"`);
+        await queryRunner.query(`ALTER TABLE "alerts" DROP CONSTRAINT "FK_fb1c974e5355df5dd194563ac62"`);
+        await queryRunner.query(`ALTER TABLE "alerts" DROP CONSTRAINT "FK_dda35567a2a444a882a23f13107"`);
+        await queryRunner.query(`ALTER TABLE "alerts" DROP CONSTRAINT "FK_f2678f7b11e5128abbbc4511906"`);
+        await queryRunner.query(`ALTER TABLE "suppliers" DROP CONSTRAINT "FK_8b6a94866e7d6ac179bbb67a1f8"`);
+        await queryRunner.query(`ALTER TABLE "routes" DROP CONSTRAINT "FK_bb4cd0199dd9a8c1438d0bff91d"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_d0e30c5d7ac0a55e2904e30d30"`);
+        await queryRunner.query(`DROP TABLE "supplier_source_checks"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_a2c2317d3ad3a24fd63f9ed877"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_c6760051455719a4d39f812942"`);
+        await queryRunner.query(`DROP TABLE "supplier_analyses"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_9b901ef33670c11e7d84eec900"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_0aebc42f7e1ec3248073e7d9d7"`);
+        await queryRunner.query(`DROP TABLE "route_suppliers"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_25b72091f0e133b40a3cb43534"`);
+        await queryRunner.query(`DROP TABLE "route_source_checks"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_546cc405170bc7cd06611fce4a"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_13641c9916fe942ea46a59adc4"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_390a98f46c8e15729e471be4da"`);
+        await queryRunner.query(`DROP TABLE "route_assessments"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_6ec2d9917e55967f8a67b9a460"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_f42c49560bb6a09c97ba7ca62e"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_fe2bbafb624389915b622d3304"`);
+        await queryRunner.query(`DROP TABLE "recommendations"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_518d9b35158dfa67dd4e76f0f3"`);
+        await queryRunner.query(`DROP TABLE "pipeline_stages"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_c1ea0de4c41947b3f2a03934d1"`);
+        await queryRunner.query(`DROP TABLE "pipeline_schedules"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_2fb85e489c7b9414220028cf6d"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_e2020a851bfbd51e1bb09d03de"`);
+        await queryRunner.query(`DROP TABLE "pipeline_runs"`);
+        await queryRunner.query(`DROP TABLE "place_locations"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_3ae546170bd6f990e0c32016ce"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_c799ee43ab13cc816f0a6e9f56"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_b63189bf8e5abf5b9188acca96"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_f2678f7b11e5128abbbc451190"`);
+        await queryRunner.query(`DROP TABLE "alerts"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_8b6a94866e7d6ac179bbb67a1f"`);
+        await queryRunner.query(`DROP TABLE "suppliers"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_bb4cd0199dd9a8c1438d0bff91"`);
+        await queryRunner.query(`DROP TABLE "routes"`);
+        await queryRunner.query(`DROP TABLE "users"`);
+    }
+
+}

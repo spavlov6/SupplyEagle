@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtModule, type JwtSignOptions } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { dataSourceOptions } from '../data-source.js';
 import { PipelineSchedule } from '../pipeline/entities/pipeline-schedule.entity.js';
 import { RealtimeModule } from '../realtime/realtime.module.js';
 import { AuthController } from './auth.controller.js';
@@ -15,10 +16,9 @@ import { User } from './user.entity.js';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        type: 'postgres' as const,
+        ...dataSourceOptions,
         url: config.getOrThrow<string>('DATABASE_URL'),
-        autoLoadEntities: true,
-        synchronize: config.get<string>('NODE_ENV') !== 'production',
+        migrationsRun: true,
       }),
     }),
     TypeOrmModule.forFeature([User, PipelineSchedule]),

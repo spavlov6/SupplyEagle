@@ -7,6 +7,7 @@
   },
   "scripts": {
     "db:up": "docker compose up -d",
+    "db:migrate": "pnpm --filter @supplyeagle/api db:migrate",
     "dev": "turbo run dev",
     "dev:web": "turbo run dev --filter=@supplyeagle/web",
     "dev:api": "turbo run dev --filter=@supplyeagle/api",

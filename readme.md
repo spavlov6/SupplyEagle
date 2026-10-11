@@ -25,7 +25,7 @@ docker compose up -d
 pnpm dev
 ```
 
-Postgres runs locally from [docker-compose.yml](docker-compose.yml) (`postgres:16` on port 5432, database `supplyeagle`). `pnpm db:up` starts the same container.
+Postgres runs locally from [docker-compose.yml](docker-compose.yml) (`postgres:16` on port 5432, database `supplyeagle`). `pnpm db:up` starts the same container. The API applies TypeORM migrations on startup. `pnpm db:migrate` runs them on demand.
 
 - Web: http://localhost:3000
 - API health: http://localhost:8080/health
